@@ -1,0 +1,49 @@
+name: tape
+
+# Draws the contribution tape (tape/<login>.svg) from the live figures.
+#
+# Why it is built this way:
+#   * the picture is generated, not pasted: the worker reads the manifest that
+#     the profile repository rebuilds every night, so the strip is the real
+#     contribution history and never a hand-typed number;
+#   * stdlib Python only, no dependency to rot;
+#   * the job commits only when the drawn file actually differs.
+
+on:
+  schedule:
+    - cron: "37 6 * * *" # daily, after the profile figures job
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tape
+  cancel-in-progress: true
+
+jobs:
+  tape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Draw the tape from the live figures
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/tape.py
+
+      - name: Commit if the tape changed
+        run: |
+          if git diff --quiet -- tape; then
+            echo "the tape is already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tape
+          git commit -m "chore(tape): redraw the contribution tape [skip ci]"
+          git push
