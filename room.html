@@ -173,7 +173,15 @@ async function boot(){
     stage.innerHTML = text;
     svg = stage.querySelector("svg");
     base = [...svg.classList].filter(c => c.startsWith("moment-"));
-    rest = "состояние: " + latest.moment + " · как оставил последний гость:";
+    // Открываем комнату такой, какая она в профиле: состояние берём из самого
+    // файла, а не из выдуманного «по умолчанию». Ссылка ?r= перебивает файл.
+    svg.classList.forEach(c => {
+      const m = /^m-([a-z]+)([01])$/.exec(c);
+      if(m && SW.includes(m[1])) ON[m[1]] = Number(m[2]);
+    });
+    readUrl();
+    const who = latest.stateFrom === "guest" ? "как оставил последний гость" : "как я её оставил";
+    rest = "состояние: " + latest.moment + " · " + who + ":";
     paint();
   }catch(err){
     stage.innerHTML = '<div style="color:#ff3d9a;padding:24px 0">комната не приехала: ' +
