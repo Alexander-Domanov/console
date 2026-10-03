@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rehearsal room 2A · tape 01</title>
+<script src="engine.js"></script>
+<style>
+  :root{ --bg:#08060c; --deep:#0d0913; --line:rgba(255,61,154,.18); --text:#e6e9f2;
+         --dim:#8b8fa3; --mag:#ff3d9a; --cy:#39e6ff; --lime:#9af03f; --amber:#ffb454; --red:#ff3355;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:
+      radial-gradient(900px 500px at 18% 0%, rgba(255,61,154,.15), transparent 60%),
+      radial-gradient(700px 420px at 92% 8%, rgba(57,230,255,.12), transparent 62%),
+      var(--bg);
+    color:var(--text);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    display:flex;justify-content:center;padding:26px 16px 40px;min-height:100%}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+    background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 4px)}
+  .room{width:1000px;max-width:100%}
+  a{color:var(--cy);text-decoration:none}
+  a:hover{text-shadow:0 0 10px rgba(57,230,255,.6)}
+  .sign{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .sign b{font-size:20px;letter-spacing:3px;color:#fff;
+    text-shadow:0 0 14px rgba(255,61,154,.75),0 0 34px rgba(255,61,154,.35)}
+  .sign span{color:var(--dim);font-size:12px;letter-spacing:1px}
+  .rec{display:inline-flex;align-items:center;gap:7px;margin-left:auto;font-size:11px;letter-spacing:2px;color:var(--dim)}
+  .rec i{width:9px;height:9px;border-radius:50%;background:#4a2030;display:inline-block}
+  .rec.on i{background:var(--red);box-shadow:0 0 12px var(--red);animation:pulse .8s infinite}
+  .rec.on{color:var(--red)}
+  @keyframes pulse{50%{opacity:.35}}
+  .stage{display:grid;grid-template-columns:330px 1fr;gap:18px}
+  .panel{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.25));
+    border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
+  .panel h2{margin:0 0 10px;font-size:11px;letter-spacing:2px;color:var(--dim);font-weight:600}
+  .stick{position:absolute;top:8px;right:12px;width:64px;height:24px;border:1px dashed rgba(255,255,255,.22);
+    border-radius:3px;color:#8a7f9a;font-size:8px;letter-spacing:1px;display:flex;align-items:center;
+    justify-content:center;transform:rotate(-4deg)}
+  .kit{width:100%;height:auto;display:block;filter:drop-shadow(0 0 18px rgba(255,61,154,.22))}
+  .floor{height:1px;background:linear-gradient(90deg,transparent,rgba(57,230,255,.5),transparent);margin:6px 0 12px}
+  .pads{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+  .pad{background:#150f1d;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:12px 4px 9px;
+    text-align:center;cursor:pointer;user-select:none;transition:transform .06s,box-shadow .12s,border-color .12s}
+  .pad b{display:block;font-size:11px;letter-spacing:1.5px;color:#cfd3e2}
+  .pad em{font-style:normal;font-size:9px;color:#6d7288;letter-spacing:1px}
+  .pad.hit{transform:translateY(2px);border-color:var(--cy);box-shadow:0 0 18px rgba(57,230,255,.35) inset}
+  .grid{display:grid;grid-template-columns:74px repeat(16,1fr);gap:3px;align-items:center}
+  .grid .lab{font-size:10px;letter-spacing:1px;color:var(--dim);padding-right:6px;text-align:right}
+  .cell{height:22px;border-radius:3px;background:#120e19;border:1px solid rgba(255,255,255,.07);cursor:pointer}
+  .cell.b4{border-left-color:rgba(255,61,154,.45)}
+  .cell.on{background:linear-gradient(180deg,var(--lime),#4f8f18);border-color:#c9ff86;box-shadow:0 0 10px rgba(154,240,63,.35)}
+  .cell.chordon{background:linear-gradient(180deg,var(--mag),#8c1a55);border-color:#ff9ecb;box-shadow:0 0 10px rgba(255,61,154,.4)}
+  .cell.play{outline:1px solid var(--cy);outline-offset:1px}
+  .ruler{display:grid;grid-template-columns:74px repeat(16,1fr);gap:3px;margin-bottom:4px}
+  .ruler div{font-size:9px;color:#5d6277;text-align:center}
+  .clabel{display:grid;grid-template-columns:74px repeat(4,1fr);gap:3px;margin-top:6px}
+  .clabel div{font-size:10px;color:var(--mag);letter-spacing:1px;text-align:center}
+  .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+  button{font:inherit;font-size:12px;letter-spacing:1px;color:var(--text);background:#151020;
+    border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:9px 13px;cursor:pointer}
+  button:hover{border-color:var(--cy);color:#fff}
+  button.hot{border-color:var(--mag);color:#ffd9ec;box-shadow:0 0 14px rgba(255,61,154,.28)}
+  button:disabled{opacity:.45;cursor:default}
+  .bpm{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--dim)}
+  input[type=range]{width:120px;accent-color:var(--mag)}
+  .tape{margin-top:18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center}
+  .cass{width:158px;height:96px;border-radius:8px;background:linear-gradient(180deg,#1a1322,#0d0913);
+    border:1px solid rgba(255,255,255,.16);position:relative}
+  .cass .win{position:absolute;left:16px;right:16px;top:22px;height:38px;border-radius:5px;background:#07050b;
+    border:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-around;align-items:center}
+  .reel{width:26px;height:26px;border-radius:50%;border:3px dotted #6a5f7d;position:relative}
+  .reel::after{content:"";position:absolute;inset:9px;background:#241a30;border-radius:50%}
+  .spin{animation:rot 1.6s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .cass .tag{position:absolute;bottom:7px;left:12px;font-size:9px;color:#8a7f9a;letter-spacing:1px}
+  .status{font-size:12px;color:var(--dim);line-height:1.7}
+  .status b{color:var(--lime)}
+  .status .warn{color:var(--amber)}
+  .foot{margin-top:16px;font-size:11px;color:#6d7288}
+  @media (max-width:820px){.stage{grid-template-columns:1fr}.grid .lab{font-size:9px}}
+</style>
+</head>
+<body>
+<div class="room">
+  <div class="sign">
+    <b>REHEARSAL ROOM 2A</b>
+    <span>tape 01 &middot; side A &middot; no master, rehearsal only</span>
+    <span class="rec" id="recLamp"><i></i><span id="recTxt">REC OFF</span></span>
+  </div>
+
+  <div class="stage">
+    <div class="panel">
+      <div class="stick">STICKER: SIDE A</div>
+      <h2>THE BAND</h2>
+      <svg class="kit" viewBox="0 0 320 265" id="kit" aria-label="drummer at a kit">
+        <defs>
+          <linearGradient id="sk" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffd9ec" stop-opacity=".95"/>
+            <stop offset="1" stop-color="#ff3d9a" stop-opacity=".55"/>
+          </linearGradient>
+          <radialGradient id="bd" cx=".5" cy=".5" r=".5">
+            <stop offset="0" stop-color="#2a1b33"/><stop offset="1" stop-color="#120c18"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="160" cy="238" rx="130" ry="14" fill="rgba(255,61,154,.10)"/>
+        <!-- crash + ride -->
+        <g id="crashG"><line x1="70" y1="96" x2="70" y2="150" stroke="#4b4258" stroke-width="2"/>
+          <ellipse cx="70" cy="94" rx="34" ry="7" fill="#2a2333" stroke="#7d6f92"/></g>
+        <g id="rideG"><line x1="252" y1="104" x2="252" y2="152" stroke="#4b4258" stroke-width="2"/>
+          <ellipse cx="252" cy="102" rx="30" ry="6" fill="#2a2333" stroke="#6f6484"/></g>
+        <!-- hihat -->
+        <g id="hatG"><line x1="112" y1="128" x2="112" y2="168" stroke="#4b4258" stroke-width="2"/>
+          <ellipse cx="112" cy="126" rx="26" ry="5" fill="#33283f" stroke="#8b7ba6"/>
+          <ellipse cx="112" cy="132" rx="26" ry="5" fill="#241c2e" stroke="#6f6484"/></g>
+        <!-- snare + floor tom -->
+        <rect x="88" y="176" width="52" height="26" rx="4" fill="#1c1526" stroke="#8b7ba6"/>
+        <ellipse cx="114" cy="176" rx="26" ry="7" fill="#2c2338" stroke="#a795c2"/>
+        <g id="tomG"><ellipse cx="212" cy="176" rx="30" ry="8" fill="#2c2338" stroke="#a795c2"/>
+          <rect x="182" y="176" width="60" height="30" rx="4" fill="#1c1526" stroke="#8b7ba6"/></g>
+        <!-- bass drum -->
+        <circle cx="160" cy="196" r="34" fill="url(#bd)" stroke="#ff3d9a" stroke-opacity=".55"/>
+        <circle cx="160" cy="196" r="22" fill="none" stroke="#ff3d9a" stroke-opacity=".3" stroke-dasharray="3 4"/>
+        <text x="160" y="200" text-anchor="middle" font-size="9" fill="#ff9ecb" letter-spacing="1">2A</text>
+        <!-- drummer -->
+        <g id="body">
+          <circle cx="160" cy="62" r="17" fill="#1f1729" stroke="url(#sk)" stroke-width="2"/>
+          <path d="M143 60 q17 -16 34 0 z" fill="#ff3d9a" fill-opacity=".5"/>
+          <path d="M160 80 q-14 8 -16 34 l32 0 q-2 -26 -16 -34 z" fill="#1f1729" stroke="url(#sk)" stroke-width="2"/>
+          <circle cx="160" cy="98" r="5" fill="#9af03f" opacity=".8"/>
+        </g>
+        <g id="armL"><line x1="150" y1="96" x2="112" y2="120" stroke="#cbb9e0" stroke-width="3" stroke-linecap="round"/>
+          <line x1="112" y1="120" x2="104" y2="131" stroke="#e8dcff" stroke-width="2"/></g>
+        <g id="armR"><line x1="170" y1="96" x2="206" y2="118" stroke="#cbb9e0" stroke-width="3" stroke-linecap="round"/>
+          <line x1="206" y1="118" x2="214" y2="130" stroke="#e8dcff" stroke-width="2"/></g>
+        <g id="legL"><line x1="152" y1="116" x2="140" y2="196" stroke="#cbb9e0" stroke-width="3"/></g>
+        <g id="legR"><line x1="170" y1="116" x2="196" y2="168" stroke="#cbb9e0" stroke-width="3"/></g>
+        <rect id="pedal" x="186" y="168" width="34" height="7" rx="3" fill="#3a2f4b" transform="rotate(-14 186 168)"/>
+      </svg>
+      <div class="floor"></div>
+      <div class="status" id="bandLine">hits the pads or press a s d f g h</div>
+    </div>
+
+    <div class="panel">
+      <div class="stick">16 STEPS</div>
+      <h2>PADS</h2>
+      <div class="pads" id="pads"></div>
+      <h2>SEQUENCER</h2>
+      <div class="ruler" id="ruler"></div>
+      <div class="grid" id="grid"></div>
+      <div class="clabel" id="clabel"></div>
+      <div class="bar">
+        <button id="playBtn" class="hot">&#9654; PLAY</button>
+        <span class="bpm">BPM <input type="range" id="bpm" min="80" max="170" value="128"><b id="bpmV">128</b></span>
+        <button id="recBtn">&#9679; REC</button>
+        <span class="bpm">RIFF <select id="riff" style="font:inherit;background:#150f1d;color:#e6e9f2;border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:6px 8px"></select></span>
+        <button id="clearBtn">CLEAR</button>
+        <button id="saveBtn">SAVE</button>
+        <button id="wavBtn">EXPORT WAV</button>
+        <button id="backBtn">&larr; CONSOLE</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel tape">
+    <div class="cass" id="cass"><div class="win">
+      <div class="reel" id="reelA"></div><div class="reel" id="reelB"></div>
+    </div><div class="tag" id="tag">TAPE 01 &middot; SIDE A</div></div>
+    <div class="status" id="status">empty tape &middot; hit REC and play, or press a s d f g h</div>
+    <div class="status" id="counter">00:00</div>
+  </div>
+
+  <div class="foot">saved takes play back on the console page &middot; everything is synthesised live,
+    no samples, no files &middot; <a href="index.html">back to the console</a></div>
+</div>
+
+<script>
+const D = BAND.DRUMS, LABEL = {kick:"KICK",snare:"SNARE",hat:"HAT",tom:"TOM",clap:"CLAP",crash:"CRASH"};
+const KEYS = {a:"kick",s:"snare",d:"hat",f:"tom",g:"clap",h:"crash"};
+let P = BAND.load() || BAND.demoPattern();
+let ac=null, master=null, playing=false, recording=false, step=0, mstep=0, nextT=0, head=0, hitsSince=0;
+let limbs = {};
+
+function audio(){
+  if(!ac){ ac = new (window.AudioContext||window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = 0.9; master.connect(ac.destination); }
+  if(ac.state==="suspended") ac.resume();
+  return ac;
+}
+
+/* ---- drummer animation ---- */
+function anim(id, amp, decay){ if(limbs[id]===undefined) limbs[id]=0; limbs[id]=Math.max(limbs[id],amp); }
+function tickAnim(){
+  ["armL","armR","crashG","rideG","hatG","tomG","body","pedal"].forEach(id=>{
+    const el = document.getElementById(id); if(!el) return;
+    const a = limbs[id] || 0; limbs[id] = a*0.88;
+    if(a<0.01){ el.removeAttribute("transform"); return; }
+    if(id==="armL"||id==="armR"){
+      const dir = id==="armL" ? -1 : 1, px = id==="armL" ? 150 : 170;
+      el.setAttribute("transform", `rotate(${dir*a*26} ${px} 96)`);
+    } else if(id==="body"){
+      el.setAttribute("transform", `translate(0 ${a*3})`);
+    } else if(id==="pedal"){
+      el.setAttribute("transform", `rotate(${-14 - a*20} 186 168)`);
+    } else {
+      const oy = id==="crashG"?94:id==="rideG"?102:126;
+      el.setAttribute("transform", `translate(0 ${a*4}) rotate(${a*4} 70 ${oy})`);
+    }
+  });
+  requestAnimationFrame(tickAnim);
+}
+requestAnimationFrame(tickAnim);
+
+/* ---- pads ---- */
+const pads = document.getElementById("pads");
+D.forEach((d,i)=>{
+  const el = document.createElement("div");
+  el.className="pad"; el.dataset.drum=d;
+  el.innerHTML = `<b>${LABEL[d]}</b><em>${"asdfgh"[i]}</em>`;
+  el.addEventListener("pointerdown", ()=>hit(d,true));
+  pads.appendChild(el);
+});
+function flash(d){
+  const el = pads.querySelector(`[data-drum="${d}"]`);
+  if(el){ el.classList.add("hit"); setTimeout(()=>el.classList.remove("hit"),110); }
+}
+function limbFor(d){
+  if(d==="kick"){ anim("pedal",1); anim("body",.6); }
+  else if(d==="snare"){ anim("armL",1); anim("body",.4); }
+  else if(d==="hat"){ anim("armL",.7); anim("hatG",.8); }
+  else if(d==="tom"){ anim("armR",1); anim("tomG",.7); }
+  else if(d==="clap"){ anim("armL",.4); anim("armR",.4); }
+  else if(d==="crash"){ anim("armR",1.2); anim("crashG",1); }
+}
+function hit(d, live){
+  const ctx = audio();
+  BAND.drum(ctx, master, d, ctx.currentTime+0.01, 1);
+  flash(d); limbFor(d);
+  if(live){
+    if(recording){ P.drums[d][nearestStep()] = 1; render(); }
+    if(!playing){ setStatus("one shot · "+LABEL[d].toLowerCase()+" · press play to loop it"); }
+  }
+}
+function nearestStep(){
+  if(!playing) return head;
+  const spb = 60/P.bpm/4, elapsed = (ac.currentTime - nextT)/spb;
+  return (step + Math.round(elapsed) + 16*2) % 16;
+}
+
+/* ---- sequencer ---- */
+function buildGrid(){
+  const g = document.getElementById("grid"); g.innerHTML="";
+  D.forEach(d=>{
+    const lab = document.createElement("div"); lab.className="lab"; lab.textContent=LABEL[d]; g.appendChild(lab);
+    for(let i=0;i<16;i++){
+      const c = document.createElement("div");
+      c.className = "cell" + (i%4===0 ? " b4":"") + (P.drums[d][i] ? " on":"");
+      c.dataset.drum=d; c.dataset.i=i;
+      c.addEventListener("click",()=>{ P.drums[d][i] ^= 1; render(); audio();
+        if(P.drums[d][i]){ BAND.drum(audio(), master, d, ac.currentTime+.01, 1); flash(d); limbFor(d); } });
+      g.appendChild(c);
+    }
+  });
+  const lab = document.createElement("div"); lab.className="lab"; lab.textContent="CHORD"; g.appendChild(lab);
+  for(let i=0;i<16;i++){
+    const c = document.createElement("div");
+    c.className = "cell" + (i%4===0 ? " b4":"") + (P.chords[i] ? " chordon":"");
+    c.dataset.chord=i;
+    c.addEventListener("click",()=>{ P.chords[i] ^= 1; render(); audio();
+      if(P.chords[i]) BAND.powerChord(audio(), master, ac.currentTime+.01, BAND.CHORDS[Math.floor(i/4)%4][0], 1, .9); });
+    g.appendChild(c);
+  }
+  const ruler = document.getElementById("ruler"); ruler.innerHTML='<div></div>';
+  for(let i=0;i<16;i++){ const d=document.createElement("div"); d.textContent = i%4===0 ? (i/4+1) : "\u00b7"; ruler.appendChild(d); }
+  const cl = document.getElementById("clabel"); cl.innerHTML='<div></div>';
+  BAND.CHORDS.forEach(([f,n])=>{ const d=document.createElement("div"); d.textContent=n; cl.appendChild(d); });
+}
+function render(){
+  document.querySelectorAll("#grid .cell").forEach(c=>{
+    if(c.dataset.drum!==undefined) c.classList.toggle("on", !!P.drums[c.dataset.drum][+c.dataset.i]);
+    else c.classList.toggle("chordon", !!P.chords[+c.dataset.chord]);
+  });
+  const hits = BAND.hitsOf(P);
+  document.getElementById("tag").textContent = "TAPE 01 \u00b7 " + hits + " HITS \u00b7 " + P.bpm + " BPM"
+    + (BAND.riffLen(P) ? " \u00b7 " + BAND.riffName(P).toUpperCase() : "");
+  document.getElementById("counter").textContent = fmt(step) + " / 16";
+  if(!recording) setStatus(hits ? `<b>${hits}</b> hits on the tape \u00b7 ${P.bpm} bpm \u00b7 `
+      + (P.saved ? `saved ${P.saved} \u00b7 plays back on the console` : `not saved yet \u00b7 press SAVE`)
+    : "empty tape \u00b7 hit REC and play, or press a s d f g h");
+}
+function fmt(i){ return String(i).padStart(2,"0"); }
+function setStatus(html){ document.getElementById("status").innerHTML = html; }
+function markStep(i){
+  document.querySelectorAll("#grid .cell.play").forEach(e=>e.classList.remove("play"));
+  document.querySelectorAll(`#grid .cell[data-i="${i}"], #grid .cell[data-chord="${i}"]`)
+    .forEach(e=>e.classList.add("play"));
+  document.getElementById("counter").textContent = fmt(i) + " / 16";
+}
+function level(l){
+  document.querySelectorAll("#grid .cell").forEach(e=>e.style.opacity = e.dataset.i==l||e.dataset.chord==l ? 1 : .82);
+}
+
+/* ---- transport ---- */
+function schedule(){
+  if(!playing) return;
+  const spb = 60/P.bpm/4;
+  while(nextT < ac.currentTime + 0.12){
+    BAND.step(ac, master, P, step, nextT, 1, mstep);
+    const idx = step, at = Math.max(0,(nextT - ac.currentTime)*1000);
+    setTimeout(()=>{ markStep(idx); D.forEach(d=>{ if(P.drums[d][idx]){ flash(d); limbFor(d);} }); }, at);
+    nextT += spb; step = (step+1)%16; mstep = (mstep+1)%(BAND.riffLen(P)||16);
+  }
+}
+setInterval(schedule, 25);
+function play(on){
+  audio();
+  playing = on;
+  document.getElementById("playBtn").innerHTML = on ? "&#9632; STOP" : "&#9654; PLAY";
+  document.getElementById("reelA").classList.toggle("spin", on);
+  document.getElementById("reelB").classList.toggle("spin", on);
+  if(on){ step = 0; mstep = 0; nextT = ac.currentTime + 0.06; }
+  else { document.querySelectorAll("#grid .cell.play").forEach(e=>e.classList.remove("play")); }
+}
+document.getElementById("playBtn").onclick = ()=>play(!playing);
+document.getElementById("bpm").oninput = e=>{ P.bpm = +e.target.value; document.getElementById("bpmV").textContent = P.bpm; render(); };
+const riffSel = document.getElementById("riff");
+Object.entries(BAND.RIFFS).forEach(([k,v])=>{
+  const o=document.createElement("option"); o.value=k; o.textContent=v.label; riffSel.appendChild(o);
+});
+riffSel.value = P.melody || "none";
+riffSel.onchange = ()=>{ P.melody = riffSel.value; render();
+  const n = BAND.riffLen(P);
+  setStatus(n ? `riff loaded: <b>${BAND.riffName(P)}</b> \u00b7 ${n} steps` : "riff off \u00b7 drums only"); };
+document.getElementById("bpm").value = P.bpm; document.getElementById("bpmV").textContent = P.bpm;
+document.getElementById("recBtn").onclick = ()=>{
+  recording = !recording;
+  document.getElementById("recBtn").classList.toggle("hot", recording);
+  document.getElementById("recLamp").classList.toggle("on", recording);
+  document.getElementById("recTxt").textContent = recording ? "REC ON" : "REC OFF";
+  if(recording){ if(!playing) play(true); setStatus("<span class='warn'>recording</span> \u00b7 hit the pads, it lands on the nearest step"); }
+  else render();
+};
+document.getElementById("clearBtn").onclick = ()=>{ P = BAND.emptyPattern(); P.bpm = +document.getElementById("bpm").value; render(); };
+document.getElementById("saveBtn").onclick = ()=>{ const at = BAND.save(P); setStatus(`<b>saved ${at}</b> \u00b7 open the console and it plays back there`); };
+document.getElementById("wavBtn").onclick = async ()=>{
+  setStatus("rendering the tape to audio\u2026");
+  const bytes = await BAND.renderWav(P, 2);
+  const url = URL.createObjectURL(new Blob([bytes],{type:"audio/wav"}));
+  const a = document.createElement("a"); a.href=url; a.download="rehearsal-2a-tape-01.wav"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  setStatus(`<b>tape rendered</b> \u00b7 two loops \u00b7 ${(bytes.length/1024/1024).toFixed(1)} MB`);
+};
+document.getElementById("backBtn").onclick = ()=>{ BAND.save(P); location.href="index.html"; };
+
+/* ---- keyboard ---- */
+addEventListener("keydown", e=>{
+  const k = e.key.toLowerCase();
+  if(KEYS[k]){ e.preventDefault(); hit(KEYS[k], true); return; }
+  if(e.code==="Space"){ e.preventDefault(); play(!playing); return; }
+  if(k==="r"){ document.getElementById("recBtn").click(); return; }
+  if(e.key==="ArrowRight"||e.key==="ArrowLeft"){
+    e.preventDefault(); head = (head + (e.key==="ArrowRight"?1:15))%16; markStep(head); return;
+  }
+  if(e.key==="Enter"){ const d=D[0];
+    for(const d2 of D){ if(P.drums[d2][head]){ P.drums[d2][head]=0; render(); return; } }
+    P.drums[d][head]=1; render(); BAND.drum(audio(), master, d, ac.currentTime+.01,1); }
+});
+window.__tape = ()=>P;
+window.__renderWavB64 = async ()=>{
+  const b = await BAND.renderWav(P, 2); let s=""; const C=0x8000;
+  for(let i=0;i<b.length;i+=C) s += String.fromCharCode.apply(null, b.subarray(i,i+C));
+  return btoa(s);
+};
+buildGrid(); render(); markStep(0);
+</script>
+</body>
+</html>

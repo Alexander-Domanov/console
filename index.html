@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>domanov@vps: ~/console</title>
+<style>
+  :root{
+    --bg:#060a12; --panel:#0a1120; --rail:#132b44; --cyan:#2ee6ff; --magenta:#ff3d9a;
+    --lime:#9af03f; --amber:#ffb020; --text:#cfe9f5; --dim:#5f849f; --dimmer:#3c5a75;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 var(--mono);
+       display:flex;align-items:center;justify-content:center;min-height:100%;
+       background-image:radial-gradient(1200px 600px at 50% -10%,#0b1a2e 0%,transparent 70%)}
+  #win{width:min(1000px,94vw);background:var(--panel);border:1px solid rgba(46,230,255,.35);
+       box-shadow:0 0 60px rgba(46,230,255,.08)}
+  #bar{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0c1728;
+       border-bottom:1px solid var(--rail);font-size:12px;color:#8fb6d6}
+  .dot{width:10px;height:10px;border-radius:50%}
+  #bar .t{margin-left:8px}
+  #bar .right{margin-left:auto;color:var(--magenta);letter-spacing:1.4px;font-size:11px;
+       display:flex;align-items:center;gap:6px}
+  .live{width:7px;height:7px;background:var(--magenta);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+  #body{display:grid;grid-template-columns:1fr 250px;gap:0}
+  #main{padding:16px 18px 10px;min-height:430px;display:flex;flex-direction:column}
+  #out{flex:1;overflow-y:auto;max-height:460px;scrollbar-width:thin}
+  .ln{white-space:pre-wrap;word-break:break-word;animation:in .18s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(3px)}to{opacity:1}}
+  .c-echo{color:#7fb0c8}
+  .c-ok{color:var(--lime)} .c-err{color:var(--magenta)} .c-dim{color:var(--dim)}
+  .c-dimmer{color:var(--dimmer)} .c-key{color:var(--cyan)} .c-warn{color:var(--amber)}
+  .c-big{font-size:30px;letter-spacing:1px;color:#eaf7ff;font-weight:700;line-height:1.2}
+  .c-sub{color:var(--lime);letter-spacing:1px}
+  .row{cursor:pointer}
+  .row:hover{background:rgba(46,230,255,.07)}
+  .row b{color:var(--cyan);font-weight:400}
+  .chip{display:inline-block;border:1px solid var(--rail);color:var(--dim);padding:2px 9px;
+        margin:6px 6px 0 0;cursor:pointer;font-size:12px}
+  .chip:hover{border-color:var(--cyan);color:var(--cyan)}
+  a{color:var(--cyan)}
+  #prompt{display:flex;align-items:center;gap:8px;border-top:1px solid var(--rail);
+          padding:10px 0 4px;margin-top:10px}
+  #user{color:var(--lime)} #sig{color:var(--dim)}
+  #inp{flex:1;background:transparent;border:0;outline:0;color:var(--text);font:14px var(--mono);
+       caret-color:var(--lime);font-weight:600}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  #hud{border-left:1px solid var(--rail);padding:16px 16px;display:flex;flex-direction:column;gap:14px}
+  .h{font-size:10.5px;letter-spacing:1.8px;color:var(--dimmer)}
+  #radar{width:100%;height:150px}
+  .meter{font-size:12px;color:var(--text);white-space:pre}
+  #hud .val{color:var(--dimmer)}
+  #scan{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+        background:repeating-linear-gradient(0deg,rgba(0,0,0,.30) 0 1px,transparent 1px 4px)}
+  body.scan #scan{opacity:1}
+  #glow{position:fixed;width:340px;height:340px;left:0;top:0;pointer-events:none;
+        transform:translate(-50%,-50%);border-radius:50%;
+        background:radial-gradient(circle,rgba(46,230,255,.10) 0%,rgba(46,230,255,.04) 40%,transparent 70%);
+        transition:opacity .3s}
+  .ripple{position:fixed;width:16px;height:16px;border:1px solid var(--cyan);border-radius:50%;
+        transform:translate(-50%,-50%);pointer-events:none;animation:rip .5s ease-out forwards}
+  @keyframes rip{to{width:120px;height:120px;opacity:0}}
+  #cv{display:none;background:#05080f;border:1px solid var(--rail);margin-top:6px}
+  #hint{font-size:11.5px;color:var(--dimmer);padding:6px 0 2px}
+  #sakura{position:fixed;inset:0;pointer-events:none;z-index:1}
+  #win{position:relative;z-index:2}
+  body.sakura #win{border-color:rgba(255,141,199,.38);box-shadow:0 0 60px rgba(255,61,154,.10)}
+  .strip{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin-top:7px}
+  .strip i{height:11px;background:#171a24;border-radius:2px;display:block}
+  .strip i.hit{background:rgba(154,240,63,.55)}
+  .strip i.on{background:#2ee6ff;box-shadow:0 0 9px #2ee6ff}
+  @media (max-width:820px){#body{grid-template-columns:1fr}#hud{border-left:0;border-top:1px solid var(--rail)}}
+</style>
+</head>
+<body>
+<div id="scan"></div>
+<div id="glow"></div>
+<canvas id="sakura"></canvas>
+<div id="win">
+  <div id="bar">
+    <span class="dot" style="background:#ff5f57"></span>
+    <span class="dot" style="background:#ffbd2e"></span>
+    <span class="dot" style="background:#28c840"></span>
+    <span class="t">domanov@vps: ~/console</span>
+    <span class="right"><span class="live"></span>REC</span>
+  </div>
+  <div id="body">
+    <div id="main">
+      <div id="out"></div>
+      <canvas id="cv" width="600" height="320"></canvas>
+      <div id="prompt">
+        <span id="user">domanov@vps</span><span id="sig">$</span>
+        <input id="inp" spellcheck="false" autocomplete="off" aria-label="command">
+      </div>
+      <div id="hint">type <b>help</b> · <b>snake</b> to play · <b>studio</b> to record a beat · click anything that looks clickable</div>
+    </div>
+    <div id="hud">
+      <div>
+        <div class="h">SIGNAL</div>
+        <svg id="radar" viewBox="0 0 200 150">
+          <circle cx="100" cy="75" r="60" fill="none" stroke="rgba(46,230,255,.35)"/>
+          <circle cx="100" cy="75" r="40" fill="none" stroke="rgba(46,230,255,.16)"/>
+          <circle cx="100" cy="75" r="20" fill="none" stroke="rgba(46,230,255,.16)"/>
+          <line x1="40" y1="75" x2="160" y2="75" stroke="rgba(46,230,255,.16)"/>
+          <line x1="100" y1="15" x2="100" y2="135" stroke="rgba(46,230,255,.16)"/>
+          <g id="wedge">
+            <path d="M100 75 L160 75 A60 60 0 0 1 142 32 Z" fill="rgba(46,230,255,.18)"/>
+            <line x1="100" y1="75" x2="160" y2="75" stroke="rgba(46,230,255,.5)"/>
+          </g>
+          <circle id="blip1" cx="72" cy="95" r="4" fill="rgba(154,240,63,.8)"/>
+          <circle id="blip2" cx="133" cy="52" r="3" fill="rgba(154,240,63,.6)"/>
+          <text x="100" y="146" fill="#3c5a75" font-size="9" font-family="ui-monospace,monospace"
+                text-anchor="middle" letter-spacing="1.5">TRACKING YOUR POINTER</text>
+        </svg>
+      </div>
+      <div>
+        <div class="h">CURSOR</div>
+        <div class="meter" id="cur">waiting<span class="val"> for signal</span></div>
+      </div>
+      <div>
+        <div class="h">SENSORS</div>
+        <div class="meter" id="meters"></div>
+      </div>
+      <div>
+        <div class="h">STATE</div>
+        <div class="meter" id="state">boot</div>
+      </div>
+      <div>
+        <div class="h">TAPE 01 <span class="val">from the studio</span></div>
+        <div class="meter" id="tapeRow">reading the tape…</div>
+        <div class="strip" id="tapeBars"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="engine.js"></script>
+<script>
+"use strict";
+// fill these in once: the only values this page needs
+const CONFIG = {
+  github:"https://github.com/Alexander-Domanov",
+  telegram:"https://t.me/alexanderdomanov",
+  linkedin:"https://www.linkedin.com/in/Alexander-Domanov",
+  medium:"https://medium.com/@Alexander-Domanov",
+  devto:"https://dev.to/Alexander-Domanov",
+  spotify:"https://open.spotify.com/user/31ypm224jnxsiaajefi4nptak4p4",
+  mail:"FILL_IN"                    // the old README shows it dotted out; needs the real address
+};
+const $=s=>document.querySelector(s);
+const out=$("#out"), inp=$("#inp"), cv=$("#cv"), ctx=cv.getContext("2d");
+const state={cmd:"boot", started:Date.now()};
+
+/* ---------- sound: generated, no files ---------- */
+let ac=null;
+function beep(f=520,d=.05,type="square",vol=.025){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type=type; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(vol,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);
+    o.start(); o.stop(ac.currentTime+d);
+  }catch(e){}
+}
+
+/* ---------- tiny output helpers ---------- */
+function ln(text,cls,opts){
+  const d=document.createElement("div");
+  d.className="ln "+(cls||"c-dim");
+  if(opts&&opts.html){d.innerHTML=text}else{d.textContent=text}
+  if(opts&&opts.click){d.classList.add("row");d.addEventListener("click",()=>{beep(700,.04);opts.click()})}
+  out.appendChild(d); out.scrollTop=out.scrollHeight;
+  return d;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function type(text,cls,delay=16){
+  const d=ln("",cls||"c-dim"); let s="";
+  for(const ch of text){s+=ch; d.textContent=s; if(!(delay===0))await sleep(delay)}
+  return d;
+}
+function chips(items){
+  const w=document.createElement("div"); w.className="ln";
+  items.forEach(t=>{
+    const c=document.createElement("span"); c.className="chip"; c.textContent=t;
+    c.addEventListener("click",()=>{beep(880,.04);run(t)});
+    w.appendChild(c);
+  });
+  out.appendChild(w); out.scrollTop=out.scrollHeight;
+}
+
+/* ---------- data ---------- */
+// no names: the work is public, the project names are not
+const RECORDS=[
+  {id:"record-01",kind:"public",stack:"typescript",when:"2026-09",what:"module config sync, ci"},
+  {id:"record-02",kind:"public",stack:"typescript",when:"2026-08",what:"ci workflow, license, readme"},
+  {id:"record-03",kind:"public",stack:"typescript",when:"2026-08",what:"routing and deploy to pages"},
+  {id:"record-04",kind:"private",stack:"mixed",when:"2026-08",what:"internal tooling"},
+  {id:"record-05",kind:"private",stack:"mixed",when:"2026-08",what:"client work"},
+  {id:"record-06",kind:"private",stack:"python",when:"2026-07",what:"api service"}
+];
+const LEDGER=[["public repos","23"],["shipped this year","6"],
+  ["private work","names withheld"],["last ship","2026-09"],
+  ["top languages","typescript 74% \u00b7 python 8% \u00b7 css 6%"],
+  ["contributions","288 on 48 active days"]];
+const MONTHS=[["11",0],["12",0],["01",0],["02",0],["03",2],["04",7],["05",0],["06",12],
+              ["07",0],["08",21],["09",5],["10",1]];
+const DEAD=[["snake.service","inactive (dead)","removed upstream","2026-08"],
+            ["spotify.service","inactive (dead)","token expired","2026-07"],
+            ["trophy.service","failed","402 deployment disabled","2026-09"],
+            ["metrics.service","failed","gateway timeout","2026-09"]];
+const SENSORS=[["SHIPPING",86,"#9af03f"],["FRONTEND",92,"#2ee6ff"],["BACKEND",64,"#2ee6ff"],
+               ["COFFEE",99,"#ffb020"],["SLEEP",31,"#ff3d9a"]];
+function drawMeters(){
+  $("#meters").innerHTML = SENSORS.map(([n,v,c])=>
+    n.padEnd(9,"\u00a0")+"<span style='color:"+c+"'>"+"\u2588".repeat(Math.round(v/100*12))
+    +"</span><span class='val'>"+"\u2591".repeat(12-Math.round(v/100*12))+"</span>").join("<br>");
+}
+
+/* ---------- commands ---------- */
+async function cmdHelp(){
+  ln("available:", "c-key");
+  ln("  whoami          who is behind the prompt");
+  ln("  ls / open <id>  what shipped, and where it lives");
+  ln("  year            twelve months, zeros included");
+  ln("  legacy          the widgets this page replaced");
+  ln("  snake           play it. yes, really");
+  ln("  studio          record a beat, it plays back on this page");
+  ln("  music           the tape and my account");
+  ln("  doom            boot a 1993 tape \u00b7 side b");
+  ln("  contact hire    the two things you probably want");
+  ln("  theme clear     comfort settings");
+  chips(["whoami","ls","year","legacy","snake","studio","music","doom","sakura","hire"]);
+}
+async function cmdWhoami(){
+  ln("ALEXANDER DOMANOV","c-big");
+  ln("> frontend \u00b7 typescript \u00b7 react \u00b7 next.js \u00b7 ai tooling","c-sub");
+  ln("");
+  ln("Belarus \u00b7 open to remote \u00b7 russian and english","c-dim");
+  ln("288 contributions on 48 active days this year \u00b7 6 day run \u00b7 23 public repos","c-dim");
+  ln("project names stay off this page. the work is public, the names are not.","c-dim");
+  ln("Experience: years of running real teams and real deadlines. Then the shelf filled up","c-dim");
+  ln("with ai tools and I started learning them in public: agents, evals, pipelines.","c-dim");
+  ln("Black filter coffee, no sugar. Cheerful mood, and a joke in every commit message.","c-dim");
+}
+async function cmdSakura(){
+  ln("$ sakura","c-echo");
+  ln("  petals in the air, blossom on the branch, wind from your cursor.","c-dim");
+  ln("  move the mouse and the petals get out of the way.","c-dimmer");
+  if(window.__petalStorm) window.__petalStorm();
+  ln("  petals: 170 \u00b7 wind: on \u00b7 it settles again in a bit.","c-key");
+}
+async function cmdLs(){
+  ln("$ ls --projects --redacted","c-echo");
+  ln("  id          kind      stack        last      what","c-dimmer");
+  RECORDS.forEach(r=>{
+    ln("  "+r.id.padEnd(12," ")+r.kind.padEnd(10," ")+r.stack.padEnd(13," ")+r.when.padEnd(10," ")+r.what,
+       "c-dim",{click:()=>run("open "+r.id)});
+  });
+  ln("");
+  LEDGER.forEach(([k,v])=>{const d=ln("","c-dim");
+    d.innerHTML="  "+k.padEnd(18," ")+"<span class='c-key'>"+v+"</span>"});
+  ln("click a row for its record. names are left out on purpose.","c-dimmer");
+}
+async function cmdOpen(id){
+  const r=RECORDS.find(x=>x.id===id);
+  if(!r){ln("no such record: "+id+" \u00b7 try ls","c-err"); return}
+  ln("$ open "+id,"c-echo");
+  ln("  kind ....... "+r.kind,"c-dim");
+  ln("  stack ...... "+r.stack,"c-dim");
+  ln("  last ....... "+r.when,"c-dim");
+  ln("  what ....... "+r.what,"c-dim");
+  ln("  name ....... \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 withheld","c-warn");
+  ln("  want the name? ask in a dm.","c-ok");
+  beep(660,.06);
+}
+async function cmdYear(){
+  const peak=Math.max(...MONTHS.map(m=>m[1]))||1;
+  MONTHS.forEach(([m,v])=>{
+    const n=Math.round(v/peak*28);
+    ln("20"+m+"  "+"#" .repeat(n)+" "+v, v?"c-ok":"c-dimmer");
+  });
+  ln("six months are genuinely empty. that is the honest chart.","c-dim");
+}
+async function cmdLegacy(){
+  ln("$ systemctl status legacy-widgets","c-echo");
+  DEAD.forEach(([u,s,w,d])=>{
+    const x=ln("", "c-dim"); x.innerHTML="<span style='color:#ff3d9a'>\u25cf</span> "+
+      u.padEnd(20," ")+"<span class='c-dimmer'>"+s.padEnd(18," ")+"</span>"+w.padEnd(24," ")
+      +"<span class='c-dimmer'>"+d+"</span>";
+  });
+  ln("4 retired \u00b7 the console you are typing in draws every figure itself","c-ok");
+}
+async function cmdMusic(){
+  ln("$ play --tape","c-echo");
+  if(tape) ln("  tape 01 \u00b7 your take from the studio \u00b7 "+tapeHits()+" hits \u00b7 "+tape.bpm+" bpm \u00b7 saved "+tape.saved,"c-dim");
+  else ln("  tape 01 is empty \u00b7 the studio fills it","c-dim");
+  ln("  a recording made in the studio loops on this page, not on someone else's server.","c-dimmer");
+  ln("  "+CONFIG.spotify,"c-key");
+  const w=document.createElement("div"); w.className="ln";
+  w.innerHTML="<span class='chip'>"+(tplaying?"\u25a0 stop the take":"\u25b6 play the take here")+"</span>"
+    +"<span class='chip'>open the studio \u2197</span>";
+  w.children[0].addEventListener("click",()=>{
+    if(!tape){ln("  nothing on the tape yet \u00b7 open the studio first","c-warn");return}
+    const on=!tplaying; tapePlay(on);
+    w.children[0].textContent=on?"\u25a0 stop the take":"\u25b6 play the take here";
+    ln(on?"  tape 01 is running on this page.":"  tape stopped.", on?"c-ok":"c-dim");
+  });
+  w.children[1].addEventListener("click",()=>{beep(980,.06);location.href="studio.html"});
+  out.appendChild(w); out.scrollTop=out.scrollHeight;
+}
+async function cmdDoom(){
+  ln("$ tape --side-b","c-echo");
+  ln("  found 1 track: DOOM.EXE \u00b7 1993 \u00b7 1.9 MB \u00b7 shareware","c-dim");
+  ln("  the real thing, booted in the page: dosbox compiled to wasm, files served from this repo.","c-dimmer");
+  ln("  the registered game is not here, only the shareware episode.","c-dimmer");
+  const w=document.createElement("div"); w.className="ln";
+  w.innerHTML="<span class='chip'>\u25b6 boot tape side b \u2197</span> <span class='chip'>\u25b6 or open it big</span>";
+  const go=()=>{beep(290,.09,"sawtooth",.03);location.href="doom.html"};
+  w.children[0].addEventListener("click",go);
+  w.children[1].addEventListener("click",()=>{window.open("doom.html","_blank");beep(290,.09,"sawtooth",.03)});
+  out.appendChild(w); out.scrollTop=out.scrollHeight;
+}
+function cmdStudio(){
+  ln("$ studio --tape-01","c-echo");
+  if(tape) ln("  tape 01 \u00b7 "+tapeHits()+" hits \u00b7 "+tape.bpm+" bpm \u00b7 saved "+tape.saved,"c-dim");
+  else ln("  tape 01 is empty \u00b7 hit REC in the studio, play the pads, press SAVE","c-dim");
+  ln("  drums and the power chords are synthesised in the browser: no samples, no files.","c-dimmer");
+  ln("  whatever you record there loops back here.","c-dimmer");
+  const w=document.createElement("div"); w.className="ln";
+  w.innerHTML="<span class='chip'>open the studio \u2197</span>";
+  w.children[0].addEventListener("click",()=>{beep(980,.06);location.href="studio.html"});
+  out.appendChild(w); out.scrollTop=out.scrollHeight;
+}
+async function cmdContact(){
+  ln("mail      "+(CONFIG.mail==="FILL_IN"?"(needs the real address)":CONFIG.mail),"c-dim");
+  [["telegram",CONFIG.telegram],["github",CONFIG.github],["linkedin",CONFIG.linkedin],
+   ["medium",CONFIG.medium],["dev.to",CONFIG.devto]].forEach(([k,v])=>{
+    const d=ln("", "c-dim"); d.innerHTML=k.padEnd(10," ")+"<span class='c-key'>"+v+"</span>";
+    d.classList.add("row"); d.addEventListener("click",()=>{beep(760,.05);window.open(v,"_blank")});
+  });
+}
+async function cmdHire(){
+  ln("open to remote frontend work.","c-ok");
+  ln("strongest at: interfaces that stay fast under real data, and picking up a stack quickly.","c-dim");
+  ln("four hours of overlap with cet. speaks russian and english.","c-dim");
+}
+async function cmdTheme(){
+  document.body.classList.toggle("scan");
+  ln("scanlines "+(document.body.classList.contains("scan")?"on":"off"),"c-ok");
+}
+function cmdSudo(){
+  ln("nice try.","c-err");
+  ln("you are not in the sudoers file. this incident has been reported to nobody.","c-dim");
+}
+
+/* ---------- snake: the old thing, still alive ---------- */
+const G={on:false,cx:0,cy:0,dx:1,dy:0,body:[],food:[0,0],score:0,t:null,dead:false,paused:false};
+const CELL=20, COLS=30, ROWS=15;
+function resetG(){
+  G.cx=8;G.cy=7;G.dx=1;G.dy=0;G.body=[[8,7],[7,7],[6,7]];G.score=0;G.dead=false;G.paused=false;
+  placeFood();
+}
+function placeFood(){
+  do{G.food=[Math.floor(Math.random()*COLS),Math.floor(Math.random()*ROWS)]}
+  while(G.body.some(([x,y])=>x===G.food[0]&&y===G.food[1]));
+}
+function drawG(){
+  ctx.fillStyle="#05080f"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle="rgba(19,43,68,.8)"; ctx.lineWidth=1;
+  for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*CELL+.5,0);ctx.lineTo(x*CELL+.5,ROWS*CELL);ctx.stroke()}
+  for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*CELL+.5);ctx.lineTo(COLS*CELL,y*CELL+.5);ctx.stroke()}
+  ctx.fillStyle="#ff3d9a";
+  ctx.shadowBlur=10;ctx.shadowColor="rgba(255,61,154,.8)";
+  ctx.beginPath();ctx.arc(G.food[0]*CELL+CELL/2,G.food[1]*CELL+CELL/2,7,0,7);ctx.fill();ctx.shadowBlur=0;
+  ctx.shadowBlur=8; ctx.shadowColor="rgba(154,240,63,.55)";
+  G.body.forEach(([x,y],i)=>{
+    ctx.fillStyle = i===0 ? "#eaf7ff" : (i%2 ? "#9af03f" : "#b6ff62");
+    ctx.fillRect(x*CELL+1,y*CELL+1,CELL-2,CELL-2);
+  });
+  ctx.shadowBlur=0;
+  ctx.fillStyle="#5f849f"; ctx.font="13px ui-monospace,monospace";
+  ctx.fillText("score "+G.score,8,ROWS*CELL-6);
+  if(G.dead){
+    ctx.fillStyle="rgba(5,8,15,.82)"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle="#ff3d9a"; ctx.font="20px ui-monospace,monospace";
+    ctx.fillText("game over \u00b7 score "+G.score,150,150);
+    ctx.fillStyle="#cfe9f5"; ctx.font="13px ui-monospace,monospace";
+    ctx.fillText("r restart \u00b7 q quit",240,180);
+  }else if(G.paused){
+    ctx.fillStyle="rgba(5,8,15,.72)"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle="#2ee6ff"; ctx.font="16px ui-monospace,monospace";
+    ctx.fillText("paused \u00b7 click to resume",180,160);
+  }
+}
+function tick(){
+  if(G.dead||G.paused)return;
+  G.cx+=G.dx; G.cy+=G.dy;
+  if(G.cx<0||G.cy<0||G.cx>=COLS||G.cy>=ROWS||G.body.some(([x,y])=>x===G.cx&&y===G.cy)){
+    G.dead=true; beep(160,.25,"sawtooth",.04); drawG(); return;
+  }
+  G.body.unshift([G.cx,G.cy]);
+  if(G.cx===G.food[0]&&G.cy===G.food[1]){G.score++;placeFood();beep(920,.05)}
+  else{G.body.pop()}
+  drawG();
+}
+function startSnake(){
+  G.on=true; cv.style.display="block"; resetG(); drawG();
+  clearInterval(G.t); G.t=setInterval(tick,110);
+  state.cmd="snake";
+  ln("snake \u00b7 arrows or wasd \u00b7 p pause \u00b7 q quit","c-ok");
+  ln("this is the widget that used to sit on my profile, except this one runs.","c-dim");
+}
+function stopSnake(){
+  G.on=false; clearInterval(G.t); cv.style.display="none"; state.cmd="idle";
+  ln("session closed \u00b7 the old thing still works, it just is not a badge anymore.","c-dim");
+}
+addEventListener("keydown",e=>{
+  if(!G.on)return;
+  const k=e.key.toLowerCase();
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
+  if(k==="q"||k==="escape"){stopSnake();return}
+  if(k==="r"){resetG();drawG();return}
+  if(k==="p"){G.paused=!G.paused;drawG();return}
+  if(G.dead)return;
+  const up=(k==="arrowup"||k==="w"), dn=(k==="arrowdown"||k==="s"),
+        lf=(k==="arrowleft"||k==="a"), rt=(k==="arrowright"||k==="d");
+  if(up&&G.dy===0){G.dy=-1;G.dx=0} else if(dn&&G.dy===0){G.dy=1;G.dx=0}
+  else if(lf&&G.dx===0){G.dx=-1;G.dy=0} else if(rt&&G.dx===0){G.dx=1;G.dy=0}
+  if(up||dn||lf||rt)beep(1100,.02,"square",.012);
+});
+cv.addEventListener("click",()=>{if(G.on&&!G.dead){G.paused=!G.paused;drawG()}});
+
+/* ---------- the dispatcher ---------- */
+async function run(text){
+  const raw=(text||inp.value).trim(); inp.value="";
+  if(!raw)return;
+  if(G.on){ if(["stop","q","quit","exit"].includes(raw.toLowerCase()))stopSnake(); return }
+  ln("domanov@vps$ "+raw,"c-echo");
+  const [c,arg]=raw.split(/\s+/);
+  state.cmd=c; beep(620,.03,"square",.015);
+  const table={help:cmdHelp,whoami:cmdWhoami,ls:cmdLs,year:cmdYear,legacy:cmdLegacy,
+    studio:cmdStudio,doom:cmdDoom,music:cmdMusic,sakura:cmdSakura,contact:cmdContact,hire:cmdHire,theme:cmdTheme,
+    open:()=>cmdOpen(arg||""),snake:startSnake,clear:async()=>{out.innerHTML=""},
+    sudo:async()=>cmdSudo()};
+  const fn=table[c];
+  if(!fn){ln("command not found: "+c+" \u00b7 try help","c-err");beep(180,.12,"sawtooth",.03);return}
+  await fn();
+  while(out.childElementCount>200)out.removeChild(out.firstChild);
+  out.scrollTop=out.scrollHeight;
+}
+
+/* ---------- pointer tracking: the page follows the cursor ---------- */
+const glow=$("#glow"), wedge=$("#wedge"), cur=$("#cur");
+let raf=null, mx=0, my=0;
+addEventListener("mousemove",e=>{
+  mx=e.clientX; my=e.clientY;
+  if(raf)return;
+  raf=requestAnimationFrame(()=>{
+    raf=null;
+    glow.style.left=mx+"px"; glow.style.top=my+"px";
+    const r=$("#radar").getBoundingClientRect();
+    const a=Math.atan2(my-(r.top+r.height/2),mx-(r.left+r.width/2))*180/Math.PI;
+    wedge.setAttribute("transform","rotate("+a+" 100 75)");
+    cur.innerHTML="x "+Math.round(mx)+" y "+Math.round(my)+
+      "<span class='val'> \u00b7 bearing "+(((a+450)%360)).toFixed(0)+"\u00b0</span>";
+  });
+});
+addEventListener("mousedown",e=>{
+  const d=document.createElement("div"); d.className="ripple";
+  d.style.left=e.clientX+"px"; d.style.top=e.clientY+"px";
+  document.body.appendChild(d); setTimeout(()=>d.remove(),500);
+  beep(760,.03,"square",.012);
+});
+addEventListener("mouseleave",()=>{cur.innerHTML="pointer left the screen<span class='val'> \u00b7 radar idle</span>"});
+
+/* ---------- tape 01: what you recorded in the studio, playing here ---------- */
+const tape = (window.BAND ? BAND.load() : null);
+let tac=null, tmaster=null, tplaying=false, tstep=0, tnext=0, tapeMuted=false;
+function tapeHits(){ return tape ? BAND.hitsOf(tape) : 0 }
+function tapeCtx(){
+  if(!tac){ tac=new (window.AudioContext||window.webkitAudioContext)();
+    tmaster=tac.createGain(); tmaster.gain.value=0.30; tmaster.connect(tac.destination); }
+  if(tac.state==="suspended") tac.resume();
+  return tac;
+}
+function tapePlay(on){
+  if(!tape) return false;
+  tapeCtx(); tplaying=on;
+  if(on){ tstep=0; tnext=tac.currentTime+0.06 } else tapeMuted=true;
+  $("#state").dataset.tape = on ? "on" : "off";
+  tapeRow();
+  return true;
+}
+function tapeStep(i){
+  const el=$("#tapeBars"); if(!el) return;
+  [...el.children].forEach((b,k)=>b.classList.toggle("on", k===i));
+}
+function tapeSchedule(){
+  if(!tplaying||!tac||!tape) return;
+  const spb=60/tape.bpm/4;
+  while(tnext<tac.currentTime+0.12){
+    BAND.step(tac,tmaster,tape,tstep,tnext,1);
+    const i=tstep, at=Math.max(0,(tnext-tac.currentTime)*1000);
+    setTimeout(()=>tapeStep(i), at);
+    tnext+=spb; tstep=(tstep+1)%16;
+  }
+}
+setInterval(tapeSchedule,25);
+function tapeRow(){
+  const el=$("#tapeRow"), bars=$("#tapeBars");
+  if(!tape){ el.innerHTML="empty <span class='val'>\u00b7 record one in the studio</span>"; bars.innerHTML=""; return }
+  el.innerHTML="tape 01 \u00b7 "+tapeHits()+" hits<span class='val'> \u00b7 "+tape.bpm+" bpm \u00b7 "
+    +(BAND.riffName(tape)?"riff "+BAND.riffName(tape)+" \u00b7 ":"")
+    +(tplaying?"playing":"stopped")+"</span>";
+  bars.innerHTML=[...Array(16)].map((_,i)=>{
+    const hit = Object.values(tape.drums).some(a=>a[i]) || tape.chords[i];
+    return "<i class='"+(hit?"hit":"")+"'></i>";
+  }).join("");
+}
+window.__tapeState=()=>({playing:tplaying,hits:tapeHits(),bpm:tape?tape.bpm:0,saved:tape?tape.saved:null});
+
+/* ---------- sakura: a branch in the corner, petals in the air, wind from your cursor ---------- */
+(function(){
+  const cv=document.getElementById("sakura"), g=cv.getContext("2d");
+  let W=0,H=0,DPR=1, branch=null, petals=[], px=-999, py=-999, pvx=0, pvy=0, storm=0, t=0, pushes=0;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+
+  function blossom(c,x,y,r){
+    c.fillStyle="rgba(255,140,196,"+rnd(0.5,0.9).toFixed(2)+")";
+    for(let i=0;i<5;i++){ const a=i/5*Math.PI*2+Math.random()*0.1;
+      c.beginPath(); c.ellipse(x+Math.cos(a)*r*0.5,y+Math.sin(a)*r*0.5,r*0.55,r*0.4,a,0,Math.PI*2); c.fill(); }
+    c.fillStyle="rgba(255,238,247,.8)"; c.beginPath(); c.arc(x,y,r*0.2,0,Math.PI*2); c.fill();
+  }
+  function limb(c,x,y,ang,len,wd,depth){
+    const cx=x+Math.cos(ang+0.45)*len*0.5, cy=y+Math.sin(ang+0.45)*len*0.5;
+    const x2=x+Math.cos(ang)*len, y2=y+Math.sin(ang)*len;
+    c.beginPath(); c.moveTo(x,y); c.quadraticCurveTo(cx,cy,x2,y2);
+    c.lineWidth=wd; c.lineCap="round"; c.strokeStyle="rgba(176,138,146,.95)"; c.stroke();
+    c.lineWidth=Math.max(0.7,wd*0.3); c.strokeStyle="rgba(255,160,205,.5)"; c.stroke();
+    if(depth<=0){ blossom(c,x2,y2,rnd(4,7)); return }
+    const n=Math.random()<0.4?3:2;
+    for(let i=0;i<n;i++)
+      limb(c,x2,y2,ang+(i-(n-1)/2)*0.52+rnd(-0.2,0.2),len*rnd(0.6,0.8),Math.max(1,wd*0.64),depth-1);
+    if(Math.random()<0.5) blossom(c,x2,y2,rnd(3.5,6));
+  }
+  function grow(){
+    const o=document.createElement("canvas"); o.width=cv.width; o.height=cv.height;
+    const c=o.getContext("2d");
+    c.setTransform(DPR,0,0,DPR,0,0);
+    limb(c,W+14,-18,Math.PI*0.66,W*0.11,9,5);            // main branch, top right
+    limb(c,W+14,-18,Math.PI*0.86,W*0.06,6,4);
+    limb(c,-18,W*0.14,Math.PI*0.22,W*0.085,6,5);         // second branch, top left
+    limb(c,W*0.2,W*0.30,-Math.PI*0.5,W*0.03,4,3);        // blossom spray below the main branch
+    branch=o;
+  }
+  const sprite=(()=>{ const c=document.createElement("canvas"); c.width=c.height=20;
+    const x=c.getContext("2d"); x.translate(10,10);
+    x.fillStyle="#ff8ec4"; x.beginPath(); x.moveTo(0,8);
+    x.bezierCurveTo(7.5,5,8,-3.5,0,-8); x.bezierCurveTo(-8,-3.5,-7.5,5,0,8); x.fill();
+    x.fillStyle="rgba(255,226,242,.9)"; x.beginPath(); x.ellipse(0,0,1.7,4.8,0,0,Math.PI*2); x.fill();
+    return c; })();
+  function petal(top){ return { x:rnd(0,W), y: top?rnd(-H*0.4,0):rnd(0,H), vx:rnd(-0.25,0.35), vy:rnd(0.35,1.15),
+    r:rnd(0.6,1.15), rot:rnd(0,Math.PI*2), vr:rnd(-0.03,0.03), sw:rnd(0.4,1.3), ph:rnd(0,Math.PI*2), a:rnd(0.62,1) }; }
+  function size(){
+    DPR=Math.min(2,window.devicePixelRatio||1); W=innerWidth; H=innerHeight;
+    cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+"px"; cv.style.height=H+"px";
+    grow();
+    petals=[]; for(let i=0;i<80;i++) petals.push(petal(false));
+  }
+  addEventListener("resize",size); size();
+  addEventListener("mousemove",e=>{ const dx=e.clientX-px, dy=e.clientY-py;
+    if(Math.abs(dx)<160&&Math.abs(dy)<160){ pvx=dx; pvy=dy; }  /* скачок = не ветер, а телепорт курсора */
+    px=e.clientX; py=e.clientY; },{passive:true});
+  addEventListener("mouseleave",()=>{ px=-999; py=-999; });
+
+  function frame(){
+    t+=1/60; g.setTransform(DPR,0,0,DPR,0,0); g.clearRect(0,0,W,H);
+    if(branch){ g.save(); g.translate(W*0.5,H*0.06);
+      g.rotate(Math.sin(t*0.5)*0.012); g.translate(-W*0.5,-H*0.06);
+      g.drawImage(branch,0,0,W,H); g.restore(); }
+    const want=storm>0?190:80;
+    while(petals.length<want) petals.push(petal(storm>0?Math.random()<0.5:true));
+    while(petals.length>want){ const i=petals.findIndex(p=>p.y<0); petals.splice(i<0?petals.length-1:i,1); }
+    if(storm>0) storm-=1/60;
+    for(const p of petals){
+      const d=Math.hypot(p.x-px,p.y-py);
+      if(d<130){ const f=(1-d/130)*1.5; p.vx+=(p.x-px)/(d+6)*f*0.9; p.vy+=(p.y-py)/(d+6)*f*0.5-0.05; pushes++; }
+      const wx=Math.max(-24,Math.min(24,pvx)), wy=Math.min(24,Math.abs(pvy));
+      p.vx+=wx*0.007; p.vy+=wy*0.002;
+      p.vx*=0.985; p.vy=Math.min(0.75,p.vy+0.004);
+      p.x+=p.vx+Math.sin(t*p.sw+p.ph)*0.45; p.y+=p.vy; p.rot+=p.vr+Math.sin(t+p.ph)*0.006;
+      if(p.y>H+24||p.y<-H*0.5||p.x<-40||p.x>W+40) Object.assign(p,petal(true));
+      g.save(); g.globalAlpha=p.a; g.translate(p.x,p.y); g.rotate(p.rot); g.scale(p.r,p.r);
+      g.drawImage(sprite,-10,-10); g.restore();
+    }
+    pvx*=0.86; pvy*=0.86;
+    requestAnimationFrame(frame);
+  }
+  frame();
+  window.__sakura=()=>({ petals:petals.length, storm:storm>0, branch:!!branch, pushes:pushes, at:[Math.round(px),Math.round(py)],
+    nearest:(x,y)=>Math.round(Math.min(...petals.map(p=>Math.hypot(p.x-x,p.y-y)))),
+    ys:petals.map(p=>Math.round(p.y)), h:H });
+  window.__dump=()=>({ px,py,pvx:+pvx.toFixed(2),pvy:+pvy.toFixed(2), p:petals.slice(0,5).map(p=>[Math.round(p.x),Math.round(p.y),+p.vx.toFixed(2),+p.vy.toFixed(2)]) });
+  window.__petalStorm=()=>{ storm=7; document.body.classList.add("sakura"); setTimeout(()=>document.body.classList.remove("sakura"),7000); };
+})();
+
+/* ---------- boot ---------- */
+function ring(){
+  setInterval(()=>{
+    const on=$("#state");
+    const up=Math.floor((Date.now()-state.started)/1000);
+    on.innerHTML=state.cmd+"<span class='val'> \u00b7 up "+up+"s</span>";
+  },1000);
+}
+async function boot(){
+  drawMeters(); ring();
+  const lines=[["console v2.6 \u00b7 local renderer, zero external widgets","c-dim"],
+    ["loading kernel modules ................ ok","c-dim"],
+    ["mounting /dev/skills .................. ok","c-dim"],
+    ["agent tooling ......................... online","c-ok"],
+    ["this page takes input. try `help`, or press `snake`.","c-ok"]];
+  for(const [t,c] of lines){await type(t,c,9); await sleep(90)}
+  ln("");
+  const p=new URLSearchParams(location.search);
+  if(p.get("auto")){
+    for(const c of p.get("auto").split("|")){await run(c); await sleep(450)}
+  }
+}
+inp.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){run()}
+  else if(e.key==="ArrowUp"&&history_.length){inp.value=history_.pop()}
+});
+const history_=[];
+const origRun=run;
+run=async function(t){const v=(t||inp.value).trim(); if(v)history_.push(v); return origRun(t)};
+addEventListener("click",e=>{if(G.on&&e.target===cv)return; inp.focus()});
+document.body.classList.add("scan");
+if(!new URLSearchParams(location.search).get("noboot"))boot(); else {drawMeters();ring()}
+tapeRow();
+let greeted=false;
+addEventListener("keydown",()=>{
+  if(greeted||tapeMuted) return; greeted=true;
+  if(tape && !tplaying && tapePlay(true))
+    ln("tape 01 \u00b7 your take from the studio is running underneath. type `studio` for the deck.","c-ok");
+});
+inp.focus();
+</script>
+</body>
+</html>

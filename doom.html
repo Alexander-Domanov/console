@@ -1,0 +1,112 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tape 01 · side b — doom.exe</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#07080c;--fg:#c9f7e5;--dim:#5f7b74;--pink:#ff8ec4;--cyan:#7fe7ff;--amber:#ffb545;--line:#1d2b2f}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 "JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+       min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 16px 34px}
+  .bar{width:100%;max-width:900px;display:flex;justify-content:space-between;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:8px}
+  .bar b{color:var(--fg);font-weight:400}
+  .rec{color:var(--pink)}
+  h1{font-size:14px;font-weight:400;margin:0;color:var(--fg)}
+  .label{width:100%;max-width:900px;border:1px solid var(--line);padding:10px 12px;color:var(--dim);
+         display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+  .label b{color:var(--fg);font-weight:400}
+  .screen{position:relative;width:100%;max-width:900px;border:1px solid var(--line);background:#000;
+          box-shadow:0 0 0 1px #000, 0 18px 60px #000a}
+  canvas{display:block;width:100%;aspect-ratio:4/3;image-rendering:pixelated;background:#000;outline:none}
+  .crt::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(180deg,#0000 0 2px,#00000055 2px 3px)}
+  .gate{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;
+        background:#000000d9;cursor:pointer;text-align:center}
+  .gate p{margin:0;color:var(--dim)}
+  .gate .big{color:var(--pink);font-size:16px}
+  kbd{border:1px solid var(--line);padding:1px 6px;color:var(--fg);border-radius:3px}
+  .keys{width:100%;max-width:900px;color:var(--dim);display:flex;flex-wrap:wrap;gap:6px 16px}
+  .foot{width:100%;max-width:900px;color:var(--dim);font-size:11.5px;border-top:1px solid var(--line);padding-top:10px}
+  a{color:var(--cyan)}
+  .log{width:100%;max-width:900px;color:var(--dim);white-space:pre-wrap;font-size:11.5px;min-height:1.4em}
+</style>
+
+<div class="bar">
+  <span>$ <b>mount a: tape01/b</b> &nbsp;·&nbsp; <b>./DOOM.EXE</b></span>
+  <span class="rec">● REC &nbsp; CH-01</span>
+</div>
+
+<div class="label">
+  <span>tape <b>01</b></span><span>side <b>B</b></span><span>track <b>doom.exe</b></span>
+  <span>year <b>1993</b></span><span>size <b>1 file · 1.9 MB</b></span><span>license <b>shareware</b></span>
+  <span id="status">status <b>stopped</b></span>
+</div>
+
+<div class="screen crt">
+  <canvas id="dos" width="640" height="400" tabindex="0"></canvas>
+  <div class="gate" id="gate">
+    <span class="big">▶ press to boot the tape</span>
+    <p>this is the real thing: DOOM shareware v1.9 inside DOSBox, compiled to wasm.<br>nothing loaded from outside this page.</p>
+  </div>
+</div>
+
+<div class="keys">
+  <span><kbd>←↑↓→</kbd> move</span>
+  <span><kbd>ctrl</kbd> fire</span>
+  <span><kbd>space</kbd> open</span>
+  <span><kbd>1234</kbd> weapons</span>
+  <span><kbd>esc</kbd> menu, then <kbd>y</kbd> to quit</span>
+  <span><a href="index.html">← back to the console</a></span>
+</div>
+
+<div class="log" id="log">waiting for a click</div>
+
+<div class="foot">
+  DOOM shareware v1.9 © 1993 id Software, distributed as shareware. Engine: DOSBox via js-dos (GPL).
+  The registered game is not here on purpose, only the shareware episode.
+</div>
+
+<script src="doom/js-dos.js"></script>
+<script>
+(function(){
+  var gate = document.getElementById("gate");
+  var logEl = document.getElementById("log");
+  var statusEl = document.getElementById("status");
+  var booted = false;
+  function log(t){ logEl.textContent = t; }
+  function status(t){ statusEl.innerHTML = "status <b>"+t+"</b>"; }
+
+  function boot(){
+    if (booted) return; booted = true;
+    gate.style.display = "none";
+    status("booting");
+    log("mounting a: … reading doom-shareware.jsdos");
+    var canvas = document.getElementById("dos");
+    canvas.focus();
+    window.__doomState = "booting"; window.__doslog = window.__doslog || [];
+    try {
+      Dos(canvas, {
+        wdosboxUrl: "doom/wdosbox.js",
+        cycles: "max",
+        autolock: false,
+        log: function(m){ (window.__doslog = window.__doslog || []).push(String(m).slice(0,200)); }
+      }).ready(function(fs, main){
+        status("loading wad");
+        log("extracting shareware… DOOM.EXE + DOOM1.WAD");
+        fs.extract("doom/doom-shareware.jsdos").then(function(){
+          status("running");
+          log("DOOM.EXE started · click the screen, then arrows to move");
+          window.__doomState = "running";
+          main(["-c", "DOOM.EXE"]);
+        }).catch(function(e){ status("error"); log("extract failed: " + e); window.__doomState = "error"; });
+      });
+    } catch (e) {
+      status("error"); log("dosbox did not start: " + e); window.__doomState = "error";
+    }
+  }
+  gate.addEventListener("click", boot);
+  document.getElementById("dos").addEventListener("click", function(){ if(!booted) boot(); });
+  // клавиши не должны уходить странице
+  addEventListener("keydown", function(e){ if(booted && e.key!=="F12") e.preventDefault(); });
+  window.__doomBoot = boot;
+})();
+</script>
