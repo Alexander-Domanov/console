@@ -341,6 +341,16 @@ async function cmdLegacy(){
   });
   ln(DEAD.length+" retired \u00b7 the console you are typing in draws every figure itself","c-ok");
 }
+async function cmdRoom(){
+  ln("$ room --open","c-echo");
+  ln("  the room is drawn in the profile repo: scripts/room.py, redrawn once an hour.",'c-dim');
+  ln("  press anything in it and the picture changes: light, music, drums, guitar, Mochi, walls, one secret.",'c-dim');
+  ln("  whatever you press rides in the page address, so you can hand the same room to someone else.",'c-dimmer');
+  const w=document.createElement("div"); w.className="ln";
+  w.innerHTML="<span class='chip'>enter the room \u2197</span>";
+  w.children[0].addEventListener("click",()=>{beep(880,.06);location.href="room.html"});
+  out.appendChild(w); out.scrollTop=out.scrollHeight;
+}
 async function cmdMusic(){
   ln("$ play --tape","c-echo");
   if(tape) ln("  tape 01 \u00b7 your take from the studio \u00b7 "+tapeHits()+" hits \u00b7 "+tape.bpm+" bpm \u00b7 saved "+tape.saved,"c-dim");
@@ -489,7 +499,7 @@ async function run(text){
   ln("domanov@vps$ "+raw,"c-echo");
   const [c,arg]=raw.split(/\s+/);
   state.cmd=c; beep(620,.03,"square",.015);
-  const table={help:cmdHelp,whoami:cmdWhoami,ls:cmdLs,year:cmdYear,legacy:cmdLegacy,
+  const table={help:cmdHelp,whoami:cmdWhoami,ls:cmdLs,year:cmdYear,legacy:cmdLegacy,room:cmdRoom,
     studio:cmdStudio,doom:cmdDoom,music:cmdMusic,sakura:cmdSakura,contact:cmdContact,hire:cmdHire,theme:cmdTheme,
     open:()=>cmdOpen(arg||""),snake:startSnake,clear:async()=>{out.innerHTML=""},
     sudo:async()=>cmdSudo()};
