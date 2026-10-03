@@ -64,6 +64,7 @@
   <div id="foot">
     <a id="profile" href="https://github.com/Alexander-Domanov">профиль ↗</a>
     <a href="index.html">консоль ↗</a>
+    <span id="clock">время суток — по твоим часам</span>
     <span class="chip" id="copy">скопировать ссылку</span>
     <span id="link"></span>
   </div>
@@ -100,6 +101,20 @@ const link = document.getElementById("link");
 let svg = null;
 let base = [];
 let rest = "как оставил последний гость:";
+
+/* Время суток берём у гостя, а не у сервера: у человека вечер — значит вечер.
+   Границы те же, что в scripts/room.py (HOURS): до 5 ночь, с 5 утро, с 11 день,
+   с 18 вечер, с 22 ночь. Вид берём из карты «время суток → файл» в указателе
+   профиля: там лежат все четыре вида, нарисованные для одного состояния. */
+const HOURS = [[5, "morning"], [11, "day"], [18, "evening"], [22, "night"]];
+const MOMENT_RU = {morning: "утро", day: "день", evening: "вечер", night: "ночь"};
+
+function guestMoment(){
+  const hour = new Date().getHours();
+  let name = "night";
+  for(const [start, value] of HOURS){ if(hour >= start) name = value; }
+  return name;
+}
 
 const params = new URLSearchParams(location.search);
 
@@ -167,9 +182,13 @@ document.getElementById("copy").addEventListener("click", async ()=>{
 
 async function boot(){
   readUrl();
+  const mine = guestMoment();
   try{
     const latest = await (await fetch(SRC + "latest.json", {cache:"no-store"})).json();
-    const text = await (await fetch(SRC + latest.name, {cache:"no-store"})).text();
+    // Вид по времени суток гостя. Если в указателе такого вида ещё нет (старый
+    // файл профиля), показываем вид профиля — комната всё равно откроется.
+    const file = (latest.moments || {})[mine] || latest.name;
+    const text = await (await fetch(SRC + file, {cache:"no-store"})).text();
     stage.innerHTML = text;
     svg = stage.querySelector("svg");
     base = [...svg.classList].filter(c => c.startsWith("moment-"));
@@ -181,7 +200,11 @@ async function boot(){
     });
     readUrl();
     const who = latest.stateFrom === "guest" ? "как оставил последний гость" : "как я её оставил";
-    rest = "состояние: " + latest.moment + " · " + who + ":";
+    rest = "состояние: " + who + ":";
+    const clock = document.getElementById("clock");
+    clock.textContent = (file === latest.name)
+      ? "время суток — по твоим часам: " + MOMENT_RU[mine]
+      : "время суток — по твоим часам: " + MOMENT_RU[mine] + " (профиль сейчас показывает другой вид)";
     paint();
   }catch(err){
     stage.innerHTML = '<div style="color:#ff3d9a;padding:24px 0">комната не приехала: ' +
