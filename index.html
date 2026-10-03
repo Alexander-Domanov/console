@@ -332,14 +332,41 @@ async function cmdYear(){
   });
   ln(rows.filter(m=>!m[1]).length+" months are genuinely empty. that is the honest chart.","c-dim");
 }
-async function cmdLegacy(){
-  ln("$ systemctl status legacy-widgets","c-echo");
-  DEAD.forEach(([u,s,w,d])=>{
-    const x=ln("", "c-dim"); x.innerHTML="<span style='color:#ff3d9a'>\u25cf</span> "+
-      u.padEnd(20," ")+"<span class='c-dimmer'>"+s.padEnd(18," ")+"</span>"+w.padEnd(24," ")
-      +"<span class='c-dimmer'>"+d+"</span>";
-  });
-  ln(DEAD.length+" retired \u00b7 the console you are typing in draws every figure itself","c-ok");
+/* ---------- the hall: виджеты, что стояли здесь и погасли ---------- */
+// Зал, а не отчёт: годы и строки — часть вымысла страницы, как и датчики SHIPPING/COFFEE выше.
+const HALL=[
+  ["2019","2021","visitor counter","Считал вас, пока бесплатный хостинг не закрылся."],
+  ["2019","2022","github-readme-stats","Считал мои коммиты, пока не упёрся в лимит чужих запросов."],
+  ["2020","2022","vue meter","Мерил, сколько я пишу на Vue. Писать стало нечего."],
+  ["2021","2023","now playing","Пел, что я слушаю. Замолчал, когда протух ключ."],
+  ["2021","2024","trophy case","Показывал кубки, пока кубки не ушли в приватный репозиторий."],
+  ["2022","2024","readme snake","Ползал по моим вкладам. Уполз, когда задача перестала просыпаться."]
+];
+const HALL_YEARS=[...new Set(HALL.flatMap(pair=>[pair[0],pair[1]]))].sort();
+function hallPlaque(a,b,n,e,i,all){
+  const top=ln("","c-dim");
+  top.innerHTML="<span class='c-dimmer'>╭─ </span><span class='c-key'>"+a+"–"+b+"</span> <span class='c-ok'>"+n+"</span>";
+  const mid=ln("","c-dim");
+  mid.innerHTML="<span class='c-dimmer'>│  </span>«"+e+"»";
+  const low=ln("","c-dim");
+  low.innerHTML="<span class='c-dimmer'>╰─ </span><span class='c-dimmer'>табличка "+i+" из "+all+"</span>";
+}
+async function cmdLegacy(what){
+  ln("$ museum --open legacy","c-echo");
+  if(what){
+    const hit=HALL.filter(p=>p[0]===what||p[1]===what||p[2].toLowerCase().includes(what.toLowerCase()));
+    if(!hit.length){ln("  в зале нет таблички «"+what+"» · годы: "+HALL_YEARS.join(", "),"c-warn");return}
+    ln("  подхожу к табличке «"+what+"» · "+(hit.length===1?"одна":hit.length+" шт."),"c-dim");
+    hit.forEach(p=>hallPlaque(p[0],p[1],p[2],p[3],HALL.indexOf(p)+1,HALL.length));
+    return;
+  }
+  ln("  зал legacy: "+HALL.length+" табличек · виджеты, что стояли здесь и погасли.","c-dim");
+  ln("  на каждой табличке годы, когда виджет стоял, и одна строка: что он делал.","c-dim");
+  HALL.forEach((p,i)=>hallPlaque(p[0],p[1],p[2],p[3],i+1,HALL.length));
+  ln("  годы в зале: "+HALL_YEARS.join(", "),"c-dimmer");
+  ln("  службы, что отвечали здесь и замолчали: "+DEAD.map(d=>d[0]).join(", "),"c-dimmer");
+  ln("  табличек "+HALL.length+" · retired "+DEAD.length+" · эта страница сама рисует каждую цифру","c-ok");
+  ln("  примерь: legacy 2022 · legacy snake","c-dimmer");
 }
 async function cmdRoom(){
   ln("$ room --open","c-echo");
@@ -499,13 +526,13 @@ async function run(text){
   ln("domanov@vps$ "+raw,"c-echo");
   const [c,arg]=raw.split(/\s+/);
   state.cmd=c; beep(620,.03,"square",.015);
-  const table={help:cmdHelp,whoami:cmdWhoami,ls:cmdLs,year:cmdYear,legacy:cmdLegacy,room:cmdRoom,
+  const table={help:cmdHelp,whoami:cmdWhoami,ls:cmdLs,year:cmdYear,legacy:(a)=>cmdLegacy(a),room:cmdRoom,
     studio:cmdStudio,doom:cmdDoom,music:cmdMusic,sakura:cmdSakura,contact:cmdContact,hire:cmdHire,theme:cmdTheme,
     open:()=>cmdOpen(arg||""),snake:startSnake,clear:async()=>{out.innerHTML=""},
     sudo:async()=>cmdSudo()};
   const fn=table[c];
   if(!fn){ln("command not found: "+c+" \u00b7 try help","c-err");beep(180,.12,"sawtooth",.03);return}
-  await fn();
+  await fn(arg);
   while(out.childElementCount>200)out.removeChild(out.firstChild);
   out.scrollTop=out.scrollHeight;
 }
