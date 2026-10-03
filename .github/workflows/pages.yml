@@ -22,6 +22,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      # The console prints live figures. It reads them from this file, which is
+      # copied here at deploy time from the profile repository's nightly job, so
+      # no number on the page is typed in by hand. If the profile repo is
+      # unreachable the deploy still succeeds and the page falls back to reading
+      # the manifest straight from GitHub in the browser.
+      - name: Pull the live figures from the profile repository
+        run: |
+          curl -fsS --retry 3 --max-time 20 \
+            -o figures.json \
+            https://raw.githubusercontent.com/Alexander-Domanov/Alexander-Domanov/main/assets/out/manifest.json \
+            || rm -f figures.json
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

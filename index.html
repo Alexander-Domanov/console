@@ -201,12 +201,53 @@ const RECORDS=[
   {id:"record-05",kind:"private",stack:"mixed",when:"2026-08",what:"client work"},
   {id:"record-06",kind:"private",stack:"python",when:"2026-07",what:"api service"}
 ];
-const LEDGER=[["public repos","23"],["shipped this year","6"],
-  ["private work","names withheld"],["last ship","2026-09"],
-  ["top languages","typescript 74% \u00b7 python 8% \u00b7 css 6%"],
-  ["contributions","290 on 48 active days"]];
-const MONTHS=[["11",0],["12",0],["01",0],["02",0],["03",2],["04",7],["05",0],["06",12],
-              ["07",0],["08",21],["09",5],["10",1]];
+// every figure on this page is fetched live at load; none of it is typed in by hand
+const LIVE={ready:false,failed:false,stats:null,shipped:[],langs:{},repos:null};
+const FIGURES=["./figures.json",
+  "https://raw.githubusercontent.com/Alexander-Domanov/Alexander-Domanov/main/assets/out/manifest.json"];
+const DOOM_TONE=290;           // Hz \u2014 the boot sound, not a figure
+async function loadFigures(){
+  for(const url of FIGURES){
+    try{
+      const res=await fetch(url,{cache:"no-store"});
+      if(!res.ok) continue;
+      const m=await res.json();
+      if(m&&m.stats){LIVE.stats=m.stats;LIVE.shipped=m.shipped||[];LIVE.langs=m.languages||{};LIVE.ready=true;break}
+    }catch(err){/* try the next source */}
+  }
+  if(!LIVE.ready)LIVE.failed=true;
+  try{
+    const res=await fetch("https://api.github.com/users/Alexander-Domanov",{cache:"no-store"});
+    const u=await res.json(); LIVE.repos=u.public_repos;
+  }catch(err){/* the repo count stays blank, the rest of the page is fine */}
+}
+function pct(part,whole){return Math.round(part/whole*100)+"%"}
+function topLangs(){
+  const rows=Object.entries(LIVE.langs).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const total=Object.values(LIVE.langs).reduce((a,b)=>a+b,0)||1;
+  return rows.map(([n,v])=>n.toLowerCase()+" "+pct(v,total)).join(" \u00b7 ");
+}
+function figureRows(){
+  const s=LIVE.stats||{};
+  const shipped=LIVE.shipped.filter(x=>String(x.date||"").startsWith(String(new Date().getFullYear()))).length;
+  return [["public repos", LIVE.repos!=null?String(LIVE.repos):"n/a"],
+    ["shipped this year", LIVE.ready?String(shipped):"n/a"],
+    ["private work","names withheld"],
+    ["last ship", s.last_active||"n/a"],
+    ["top languages", LIVE.ready?topLangs():"n/a"],
+    ["contributions", LIVE.ready?(s.contributions+" contributions on "+s.active_days+" active days"):"figures offline"]];
+}
+function monthRows(){
+  if(!LIVE.ready) return [];
+  return LIVE.stats.months.slice(-12).map(([k,v])=>[k,v]);
+}
+function figureLine(){
+  const s=LIVE.stats;
+  if(!s) return "the daily figures are still loading \u00b7 run `year` in a moment";
+  const repos=LIVE.repos!=null?LIVE.repos+" public repos":"";
+  return [s.contributions+" contributions on "+s.active_days+" active days this year",
+          s.longest_run+" day run",repos].filter(Boolean).join(" \u00b7 ");
+}
 const DEAD=[["snake.service","inactive (dead)","removed upstream","2026-08"],
             ["spotify.service","inactive (dead)","token expired","2026-07"],
             ["trophy.service","failed","402 deployment disabled","2026-09"],
@@ -239,7 +280,7 @@ async function cmdWhoami(){
   ln("> frontend \u00b7 typescript \u00b7 react \u00b7 next.js \u00b7 ai tooling","c-sub");
   ln("");
   ln("Belarus \u00b7 open to remote \u00b7 russian and english","c-dim");
-  ln("290 contributions on 48 active days this year \u00b7 6 day run \u00b7 23 public repos","c-dim");
+  ln(figureLine(),"c-dim");
   ln("project names stay off this page. the work is public, the names are not.","c-dim");
   ln("Experience: years of running real teams and real deadlines. Then the shelf filled up","c-dim");
   ln("with ai tools and I started learning them in public: agents, evals, pipelines.","c-dim");
@@ -260,7 +301,7 @@ async function cmdLs(){
        "c-dim",{click:()=>run("open "+r.id)});
   });
   ln("");
-  LEDGER.forEach(([k,v])=>{const d=ln("","c-dim");
+  figureRows().forEach(([k,v])=>{const d=ln("","c-dim");
     d.innerHTML="  "+k.padEnd(18," ")+"<span class='c-key'>"+v+"</span>"});
   ln("click a row for its record. names are left out on purpose.","c-dimmer");
 }
@@ -277,12 +318,14 @@ async function cmdOpen(id){
   beep(660,.06);
 }
 async function cmdYear(){
-  const peak=Math.max(...MONTHS.map(m=>m[1]))||1;
-  MONTHS.forEach(([m,v])=>{
+  const rows=monthRows();
+  if(!rows.length){ln("the figures are still loading \u00b7 try `year` again in a moment","c-warn");return}
+  const peak=Math.max(...rows.map(m=>m[1]))||1;
+  rows.forEach(([m,v])=>{
     const n=Math.round(v/peak*28);
-    ln("20"+m+"  "+"#" .repeat(n)+" "+v, v?"c-ok":"c-dimmer");
+    ln(m.padEnd(8," ")+"#".repeat(n)+" "+v, v?"c-ok":"c-dimmer");
   });
-  ln("six months are genuinely empty. that is the honest chart.","c-dim");
+  ln(rows.filter(m=>!m[1]).length+" months are genuinely empty. that is the honest chart.","c-dim");
 }
 async function cmdLegacy(){
   ln("$ systemctl status legacy-widgets","c-echo");
@@ -291,7 +334,7 @@ async function cmdLegacy(){
       u.padEnd(20," ")+"<span class='c-dimmer'>"+s.padEnd(18," ")+"</span>"+w.padEnd(24," ")
       +"<span class='c-dimmer'>"+d+"</span>";
   });
-  ln("4 retired \u00b7 the console you are typing in draws every figure itself","c-ok");
+  ln(DEAD.length+" retired \u00b7 the console you are typing in draws every figure itself","c-ok");
 }
 async function cmdMusic(){
   ln("$ play --tape","c-echo");
@@ -318,9 +361,9 @@ async function cmdDoom(){
   ln("  the registered game is not here, only the shareware episode.","c-dimmer");
   const w=document.createElement("div"); w.className="ln";
   w.innerHTML="<span class='chip'>\u25b6 boot tape side b \u2197</span> <span class='chip'>\u25b6 or open it big</span>";
-  const go=()=>{beep(290,.09,"sawtooth",.03);location.href="doom.html"};
+  const go=()=>{beep(DOOM_TONE,.09,"sawtooth",.03);location.href="doom.html"};
   w.children[0].addEventListener("click",go);
-  w.children[1].addEventListener("click",()=>{window.open("doom.html","_blank");beep(290,.09,"sawtooth",.03)});
+  w.children[1].addEventListener("click",()=>{window.open("doom.html","_blank");beep(DOOM_TONE,.09,"sawtooth",.03)});
   out.appendChild(w); out.scrollTop=out.scrollHeight;
 }
 function cmdStudio(){
@@ -639,6 +682,7 @@ run=async function(t){const v=(t||inp.value).trim(); if(v)history_.push(v); retu
 addEventListener("click",e=>{if(G.on&&e.target===cv)return; inp.focus()});
 document.body.classList.add("scan");
 if(!new URLSearchParams(location.search).get("noboot"))boot(); else {drawMeters();ring()}
+loadFigures();
 tapeRow();
 let greeted=false;
 addEventListener("keydown",()=>{
