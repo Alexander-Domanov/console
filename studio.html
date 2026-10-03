@@ -156,6 +156,7 @@
         <span class="bpm">RIFF <select id="riff" style="font:inherit;background:#150f1d;color:#e6e9f2;border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:6px 8px"></select></span>
         <button id="clearBtn">CLEAR</button>
         <button id="saveBtn">SAVE</button>
+        <button id="shareBtn">COPY LINK</button>
         <button id="wavBtn">EXPORT WAV</button>
         <button id="backBtn">&larr; CONSOLE</button>
       </div>
@@ -177,7 +178,22 @@
 <script>
 const D = BAND.DRUMS, LABEL = {kick:"KICK",snare:"SNARE",hat:"HAT",tom:"TOM",clap:"CLAP",crash:"CRASH"};
 const KEYS = {a:"kick",s:"snare",d:"hat",f:"tom",g:"clap",h:"crash"};
-let P = BAND.load() || BAND.demoPattern();
+/* ---- the take can travel in the address: no login, no storage, just the link ---- */
+function enc64(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function dec64(s){
+  s = s.replace(/-/g,"+").replace(/_/g,"/"); while (s.length % 4) s += "=";
+  const bin = atob(s); const bytes = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function encodeTape(p){ return enc64(JSON.stringify(p)); }
+function decodeTape(s){ try { return JSON.parse(dec64(s)); } catch(e){ return null; } }
+const TAPE_PARAM = new URLSearchParams(location.search).get("tape");
+let P = (TAPE_PARAM && decodeTape(TAPE_PARAM)) || BAND.load() || BAND.demoPattern();
 let ac=null, master=null, playing=false, recording=false, step=0, mstep=0, nextT=0, head=0, hitsSince=0;
 let limbs = {};
 
@@ -342,6 +358,17 @@ document.getElementById("recBtn").onclick = ()=>{
 };
 document.getElementById("clearBtn").onclick = ()=>{ P = BAND.emptyPattern(); P.bpm = +document.getElementById("bpm").value; render(); };
 document.getElementById("saveBtn").onclick = ()=>{ const at = BAND.save(P); setStatus(`<b>saved ${at}</b> \u00b7 open the console and it plays back there`); };
+document.getElementById("shareBtn").onclick = ()=>{
+  const enc = encodeTape(P);
+  try { history.replaceState(null, "", location.pathname + "?tape=" + enc); } catch(e){}
+  const link = (location.origin && location.origin!=="null" ? location.origin : "") + location.pathname + "?tape=" + enc;
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).catch(()=>{});
+  setStatus(`<b>link ready</b> \u00b7 opens this exact take in a clean browser, no storage needed \u00b7 ${link.length} chars`);
+};
+window.encodeTape = encodeTape;
+window.decodeTape = decodeTape;
+window.__encoded = ()=>encodeTape(P);
+window.__tapeLink = ()=>location.pathname + "?tape=" + encodeTape(P);
 document.getElementById("wavBtn").onclick = async ()=>{
   setStatus("rendering the tape to audio\u2026");
   const bytes = await BAND.renderWav(P, 2);
