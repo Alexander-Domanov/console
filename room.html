@@ -21,8 +21,35 @@
   .dot{width:10px;height:10px;border-radius:50%}
   #bar .t{margin-left:8px}
   #bar .right{margin-left:auto;color:var(--magenta);letter-spacing:1.4px;font-size:11px}
-  #stage{padding:14px 16px 4px}
+  #stage{padding:14px 16px 4px;position:relative}
   #stage svg{width:100%;height:auto;display:block;border:1px solid var(--rail)}
+
+  /* Плеер — маленькое окно в комнате: что играет, полоса уровня, кнопка. Своё,
+     без чужих записей: гитару и барабаны собираем кодом тут же, на странице. */
+  #player{position:absolute;left:26px;bottom:14px;width:196px;padding:7px 9px 9px;
+    border:1px solid rgba(146,170,196,.45);border-radius:6px;background:rgba(8,14,22,.74);
+    color:#a8c6e0;font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;z-index:3}
+  #player .pt{display:flex;justify-content:space-between;gap:8px;color:#6f93b3}
+  #player #pstate{color:#a8c6e0}
+  #player #ptrack{color:#7d9cb8;margin-top:2px}
+  #player #plevel{height:5px;margin:6px 0;border-radius:3px;background:rgba(146,170,196,.2);overflow:hidden}
+  #player #pbar{display:block;height:100%;width:0;background:#7fd6f0}
+  #player #pbtn{font:13px/1 ui-monospace,Menlo,Consolas,monospace;color:#cfe6ff;
+    background:rgba(30,48,68,.92);border:1px solid rgba(146,170,196,.45);border-radius:4px;
+    padding:4px 10px;cursor:pointer}
+  #player #pbtn:hover{background:rgba(54,82,112,.95)}
+  #player[data-on="1"]{border-color:rgba(127,214,240,.8)}
+  /* Лампа мигает в такт: тем же темпом, что и звук, — длительность ставим из кода. */
+  #stage svg[data-music="on"] #lamp{animation:roombeat .6s linear infinite}
+  @keyframes roombeat{0%{opacity:1}16%{opacity:.3}100%{opacity:.3}}
+  /* За инструментом она другая: спина прямее. */
+  #stage svg[data-music="on"] #mizu{translate:0 -4px;rotate:-1deg}
+  /* Моти на барабанах: проснулся, воет, потом уходит спать подальше от шума. */
+  #stage svg[data-dog="howl"] #mochi-awake{translate:0 -18px;rotate:-3deg}
+  #stage svg[data-dog="howl"] #bubble{display:inline}
+  #stage svg[data-dog="away"] #mochi-awake{display:none!important}
+  #stage svg[data-dog="away"] #mochi-sleep{display:inline!important;translate:-620px 66px}
+  #stage svg[data-dog="away"] #bubble{display:none!important}
   #say{padding:0 16px;color:var(--dim);min-height:22px;font-size:13px}
   #pult{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px 4px}
   #pult button{font:12px var(--mono);color:var(--dim);background:transparent;
@@ -99,7 +126,7 @@
   #stage svg[data-dog="voice"] #mochi-awake{translate:0 -16px}
   #stage svg[data-dog="voice"] #mochi-sleep{translate:0 -16px}
   #stage svg[data-dog="voice"] #bubble{display:inline}
-  @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} }
+  @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} #player{left:12px;bottom:10px;width:150px} }
 </style>
 </head>
 <body>
@@ -401,9 +428,158 @@ const DOG_LINE = {
   ignore: "Сделал вид, что не слышал. Бывает."
 };
 
+/* Инструменты и плеер. Хозяин: «можно ей гитару дать и барабаны, плеер».
+   Звук свой, собранный тут же кодом (WebAudio): ничьих записей не тащим — ни
+   прав, ни веса. Гитара и барабаны играют по кругу, лампа мигает в такт, а
+   уровень снимаем живым анализатором, поэтому полоса показывает звук, а не
+   рисуется. За инструментом Мидзу другая: фразы короче. */
+const BPM = 96;
+const GUITAR_NOTES = [196, 247, 294, 330, 294, 247, 220, 247];
+const MUSIC_LINES = {
+  playing: ["Барабаны и гитара. Держу.", "Играю. Слушай.", "Ритм держу.", "Струна и бит."],
+  idle:    ["Струны молчат. Тронуть?", "Инструменты ждут. Скажи play.",
+            "Тишина. Но я рядом.", "Гитара на стене. Начнём?"]
+};
+let musicOn = false, musicLine = "", musicCtx = null, musicMaster = null, musicAnalyser = null,
+    musicData = null, musicPad = null, musicNoise = null, beatTimer = null, beatStep = 0,
+    rmsNow = 0, metreRaf = 0;
+let dogScene = null, sceneTimer = null;
+
+function musicNoiseBuffer(){
+  const n = Math.floor(musicCtx.sampleRate * 0.4);
+  const buf = musicCtx.createBuffer(1, n, musicCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+function pluck(){
+  const f = GUITAR_NOTES[beatStep++ % GUITAR_NOTES.length];
+  const t = musicCtx.currentTime;
+  const o = musicCtx.createOscillator(), g = musicCtx.createGain();
+  o.type = "sawtooth"; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.20, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+  o.connect(g); g.connect(musicMaster); o.start(t); o.stop(t + 0.42);
+}
+function kick(){
+  const t = musicCtx.currentTime;
+  const o = musicCtx.createOscillator(), g = musicCtx.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(48, t + 0.16);
+  g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(g); g.connect(musicMaster); o.start(t); o.stop(t + 0.24);
+}
+function hitNoise(dur, volume, freq){
+  const t = musicCtx.currentTime;
+  const s = musicCtx.createBufferSource(); s.buffer = musicNoise;
+  const f = musicCtx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = freq;
+  const g = musicCtx.createGain();
+  g.gain.setValueAtTime(volume, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(musicMaster); s.start(t); s.stop(t + dur);
+}
+function beat(){
+  pluck(); kick();
+  if(beatStep % 2 === 0) hitNoise(0.05, 0.14, 6500);
+  if(beatStep % 4 === 3) hitNoise(0.14, 0.26, 1500);
+}
+function metreTick(){
+  if(!musicOn || !musicAnalyser){ return; }
+  musicAnalyser.getByteTimeDomainData(musicData);
+  let sum = 0;
+  for(let i = 0; i < musicData.length; i++){ const v = (musicData[i] - 128) / 128; sum += v * v; }
+  rmsNow = Math.sqrt(sum / musicData.length);
+  const pb = document.getElementById("pbar");
+  if(pb) pb.style.width = Math.max(3, Math.min(100, rmsNow * 260)).toFixed(1) + "%";
+  metreRaf = requestAnimationFrame(metreTick);
+}
+function startMusic(){
+  if(musicOn) return;
+  try{
+    musicCtx = musicCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(musicCtx.state === "suspended") musicCtx.resume();
+    musicMaster = musicCtx.createGain(); musicMaster.gain.value = 0.9;
+    musicAnalyser = musicCtx.createAnalyser(); musicAnalyser.fftSize = 1024;
+    musicMaster.connect(musicAnalyser); musicAnalyser.connect(musicCtx.destination);
+    musicData = new Uint8Array(musicAnalyser.fftSize);
+    musicNoise = musicNoise || musicNoiseBuffer();
+    // Ровный фон: между ударами тишины нет, иначе уровень прыгает в ноль.
+    musicPad = musicCtx.createOscillator();
+    const pg = musicCtx.createGain();
+    musicPad.type = "triangle"; musicPad.frequency.value = 110; pg.gain.value = 0.05;
+    musicPad.connect(pg); pg.connect(musicMaster); musicPad.start();
+    beatStep = 0; beat();
+    beatTimer = setInterval(beat, 60000 / BPM);
+    musicOn = true; musicLine = MUSIC_LINES.playing[0];
+    if(svg) svg.setAttribute("data-music", "on");
+    updatePlayer(); paint();
+    cancelAnimationFrame(metreRaf); metreRaf = requestAnimationFrame(metreTick);
+  }catch(err){ musicOn = false; }
+}
+function stopMusic(){
+  if(beatTimer){ clearInterval(beatTimer); beatTimer = null; }
+  cancelAnimationFrame(metreRaf); metreRaf = 0;
+  try{ if(musicPad) musicPad.stop(); }catch(e){}
+  try{ if(musicCtx && musicCtx.close) musicCtx.close(); }catch(e){}
+  musicCtx = null; musicMaster = null; musicAnalyser = null; musicData = null;
+  musicPad = null; musicNoise = null; rmsNow = 0; musicOn = false; musicLine = "";
+  if(svg) svg.removeAttribute("data-music");
+  const pb = document.getElementById("pbar"); if(pb) pb.style.width = "0px";
+  updatePlayer();
+}
+function audioState(){
+  return {on: !!musicOn, state: musicCtx ? musicCtx.state : "suspended",
+          rms: Math.round(rmsNow * 1000) / 1000, bpm: musicOn ? BPM : null};
+}
+function injectPlayer(){
+  if(!stage || document.getElementById("player")) return;
+  const box = document.createElement("div");
+  box.id = "player"; box.setAttribute("data-on", "0");
+  box.innerHTML = '<div class="pt"><span>плеер</span><span id="pstate">остановлено</span></div>'
+    + '<div id="ptrack">тишина</div>'
+    + '<div id="plevel"><span id="pbar"></span></div>'
+    + '<button id="pbtn" type="button">играть</button>';
+  stage.appendChild(box);
+  box.querySelector("#pbtn").addEventListener("click", ()=>{
+    if(musicOn){ stopMusic(); ON.music = 0; } else { ON.music = 1; startMusic(); }
+    paint(); saveRoom(); publish();
+  });
+  updatePlayer();
+}
+function updatePlayer(){
+  const win = document.getElementById("player");
+  if(!win) return;
+  win.setAttribute("data-on", musicOn ? "1" : "0");
+  const st = document.getElementById("pstate"), btn = document.getElementById("pbtn"),
+        tr = document.getElementById("ptrack");
+  if(st) st.textContent = musicOn ? "идёт воспроизведение" : "остановлено";
+  if(btn) btn.textContent = musicOn ? "стоп" : "играть";
+  if(tr) tr.textContent = musicOn ? "гитара · барабаны" : "тишина";
+}
+/* Голос Моти: текст и ширина пузыря меняются вместе со словом. */
+function bubbleSay(text){
+  const b = svg && svg.querySelector("#bubble");
+  if(!b) return;
+  const t = b.querySelector("text"), r = b.querySelector("rect");
+  if(t){ t.textContent = text; t.setAttribute("x", text.length > 3 ? "758" : "747"); }
+  if(r){ r.setAttribute("width", text.length > 3 ? "84" : "62"); }
+}
+/* Барабаны: Моти просыпается от стука, воет и уходит спать подальше от шума. */
+function drumsScene(){
+  dogScene = "howl"; ON.dog = 1;
+  bubbleSay("Ууу!");
+  clearTimeout(sceneTimer);
+  sceneTimer = setTimeout(()=>{
+    dogScene = "away"; ON.dog = 0;
+    paint(); saveRoom(); publish();
+  }, 2400);
+  paint(); saveRoom(); publish();
+}
+
 function applyDog(){
   if(!svg) return;
-  if(DOG.pose && DOG.pose !== "idle") svg.setAttribute("data-dog", DOG.pose);
+  const pose = dogScene || DOG.pose;
+  if(pose && pose !== "idle") svg.setAttribute("data-dog", pose);
   else svg.removeAttribute("data-dog");
 }
 
@@ -454,7 +630,9 @@ function paint(){
   svg.setAttribute("class", base.concat(stateClasses()).concat("design-" + design).join(" "));
   applyGame();
   applyDog();
-  const line = gameLine || DOG_LINE[DOG.pose] || say_();
+  const line = dogScene === "howl" ? "Моти проснулся от барабанов и завыл."
+             : dogScene === "away" ? "Моти ушёл спать в коридор, подальше от шума."
+             : (gameLine || (musicOn ? musicLine : "") || DOG_LINE[DOG.pose] || say_());
   const t = svg.querySelector("#line");
   if(t && line) t.textContent = line;
   say.textContent = line || (rest + " · жми кнопки или набери команду");
@@ -503,12 +681,14 @@ function runCommand(raw){
       return false;
     case "play":
       ON.music = 1; if(design === "day") design = "studio";
+      startMusic();
       cmdReply(SAY.music, "ok"); return true;
     case "stop":
-      ON.music = 0; if(design === "studio") design = "day";
+      stopMusic(); ON.music = 0; if(design === "studio") design = "day";
       cmdReply("Тишина. Вернула комнату как была.", ""); return true;
     case "drums":
       ON.drums = ON.drums ? 0 : 1;
+      if(ON.drums && musicOn) drumsScene();
       cmdReply(ON.drums ? SAY.drums : "Барабаны смолкли. Моти вернулся.", ""); return true;
     case "guitar":
       ON.guitar = ON.guitar ? 0 : 1;
@@ -543,7 +723,10 @@ document.getElementById("cmdform").addEventListener("submit", e=>{
 /* Для проверки снаружи: сколько оформлений держим и какие команды знаем. */
 window.__ROOM = {designs: DESIGNS.slice(), commands: COMMANDS.slice(), design: ()=>design,
   game: ()=>({phase: GAME.phase, outcome: GAME.outcome, runs: GAME.runs}),
-  dog: ()=>({pose: DOG.pose, tries: DOG.tries, ignores: DOG.ignores, last: DOG.last})};
+  dog: ()=>({pose: DOG.pose, tries: DOG.tries, ignores: DOG.ignores, last: DOG.last}),
+  audio: audioState,
+  lines: {playing: MUSIC_LINES.playing.slice(), idle: MUSIC_LINES.idle.slice()},
+  music: ()=>({on: musicOn, line: musicLine})};
 
 document.getElementById("pult").addEventListener("click", e=>{
   const sw = e.target.dataset && e.target.dataset.sw;
@@ -554,6 +737,10 @@ document.getElementById("pult").addEventListener("click", e=>{
   } else {
     ON[sw] = ON[sw] ? 0 : 1;
   }
+  // Плеер идёт за кнопкой «музыка»: включил — играет, выключил — тишина.
+  if(sw === "music"){ if(ON.music) startMusic(); else stopMusic(); }
+  // Барабаны будят Моти: он воет и уходит спать подальше — это слышно и видно.
+  if(sw === "drums" && musicOn) drumsScene();
   paint();
   saveRoom();
   publish();
@@ -607,6 +794,7 @@ async function boot(){
     const text = await (await fetch(SRC + file, {cache:"no-store"})).text();
     stage.innerHTML = text;
     svg = stage.querySelector("svg");
+    injectPlayer();
     base = [...svg.classList].filter(c => c.startsWith("moment-"));
     // Открываем комнату такой, какая она в профиле: состояние берём из самого
     // файла, а не из выдуманного «по умолчанию». Дальше память гостя (?r/?d
