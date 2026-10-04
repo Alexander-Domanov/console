@@ -76,6 +76,22 @@
   #stage svg.design-secret #wall{fill:#141a2e}
   #stage svg.design-secret #back{fill:#101426}
   #stage svg.design-secret #secret{display:inline}
+  /* Игра с мячом: команда dog зовёт Моти, мяч летит, у игры есть исход, и
+     Мидзу после неё другая — поза, настроение, реплика. */
+  #stage svg #gameball{opacity:0;translate:524px 146px;
+       transition:opacity .25s ease, translate 1.05s cubic-bezier(.3,.05,.7,.5)}
+  #stage svg #gameball circle{fill:#e8c07a;stroke:#cfd3dd;stroke-width:2}
+  #stage svg[data-game="flying"] #gameball{opacity:1;translate:742px 222px}
+  #stage svg[data-game="brings"] #gameball{opacity:1;translate:686px 244px;transition-duration:.3s}
+  #stage svg[data-game="distracts"] #gameball{opacity:1;translate:836px 300px;transition-duration:.3s}
+  #stage svg[data-game="flying"] #mochi-awake{translate:-40px -4px;
+       transition:translate 1.05s ease-out}
+  #stage svg[data-game="brings"] #mochi-awake{translate:4px 0;transition:translate .5s ease-out}
+  #stage svg[data-game="distracts"] #mochi-awake{translate:-12px 0;transition:translate .5s ease-out}
+  #stage svg[data-mood="play"] #mizu{translate:0 -6px;rotate:-3deg;
+       transition:translate .5s ease, rotate .5s ease}
+  #stage svg[data-mood="lost"] #mizu{translate:0 2px;rotate:2deg;
+       transition:translate .5s ease, rotate .5s ease}
   @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} }
 </style>
 </head>
@@ -298,6 +314,71 @@ function loadRoom(){
   }catch(e){ return false; }
 }
 
+/* Игра с мячом. Хозяин: «девочка может быть с кем-то играть, и она тоже будет
+   меняться». Правило простое: команда dog зовёт Моти — мяч летит, Моти бежит,
+   через пару секунд объявляется исход. Приносит он не всегда: так живее, чем
+   идеальный робот. После игры Мидзу другая — поза, настроение, реплика. */
+const GAME = {phase: "idle", outcome: null, runs: 0};
+let gameTimer = null;
+let gameLine = "";
+
+/* Состояние игры держим в отдельных атрибутах, а не в списке классов: класс
+   описывает состояние комнаты и уезжает в адрес, а игра — событие гостя, и
+   ломать ссылку оно не должно. */
+function applyGame(){
+  if(!svg) return;
+  const done = GAME.phase === "done";
+  const brings = GAME.outcome === "принёс";
+  const g = GAME.phase === "flying" ? "flying" : (done ? (brings ? "brings" : "distracts") : "");
+  const m = done ? (brings ? "play" : "lost") : "";
+  if(g) svg.setAttribute("data-game", g); else svg.removeAttribute("data-game");
+  if(m) svg.setAttribute("data-mood", m); else svg.removeAttribute("data-mood");
+}
+
+/* Мяч — не часть файла профиля, а живой предмет комнаты: подкладываем его в
+   нарисованную комнату, когда она уже приехала. */
+function injectGame(){
+  if(!svg || svg.querySelector("#gameball")) return;
+  const NS = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("id", "gameball");
+  const ball = document.createElementNS(NS, "circle");
+  ball.setAttribute("cx", "0"); ball.setAttribute("cy", "0"); ball.setAttribute("r", "7");
+  g.appendChild(ball);
+  svg.appendChild(g);
+}
+
+function resetGame(){
+  clearTimeout(gameTimer);
+  GAME.phase = "idle";
+  GAME.outcome = null;
+  gameLine = "";
+}
+
+function startGame(){
+  resetGame();
+  GAME.phase = "flying";
+  cmdReply("Зову Моти. Бросаю мяч.", "");
+  paint();
+  gameTimer = setTimeout(finishGame, 2600);
+}
+
+function finishGame(){
+  clearTimeout(gameTimer);
+  const brings = Math.random() < 0.65;
+  GAME.phase = "done";
+  GAME.outcome = brings ? "принёс" : "отвлёкся";
+  GAME.runs += 1;
+  ON.dog = brings ? 1 : 0;
+  gameLine = brings ? "Принёс! Умница. Теперь можно и чаю."
+                    : "Ушёл по своим делам. Мяч лежит, ищи сам.";
+  cmdReply(brings ? "Моти принёс мяч. Исход игры: принёс."
+                  : "Моти отвлёкся и убежал. Исход игры: отвлёкся.",
+           brings ? "ok" : "warn");
+  paint();
+  saveRoom();
+}
+
 function stateClasses(){ return SW.map(k => "m-" + k + (ON[k] ? 1 : 0)).join(" "); }
 
 function say_(){
@@ -313,7 +394,8 @@ function say_(){
 function paint(){
   if(!svg) return;
   svg.setAttribute("class", base.concat(stateClasses()).concat("design-" + design).join(" "));
-  const line = say_();
+  applyGame();
+  const line = gameLine || say_();
   const t = svg.querySelector("#line");
   if(t && line) t.textContent = line;
   say.textContent = line || (rest + " · жми кнопки или набери команду");
@@ -367,8 +449,10 @@ function runCommand(raw){
       cmdReply(ON.guitar ? "Гитара на стене. Трону струну — комната дрогнет."
                          : "Отложила гитару.", ""); return true;
     case "dog":
-      ON.dog = ON.dog ? 0 : 1;
-      cmdReply(ON.dog ? SAY.dog : "Моти свернулся и уснул.", ""); return true;
+      // Зовём Моти на игру. Второй раз — отзываем: он сворачивается и спит.
+      if(!ON.dog){ ON.dog = 1; startGame(); }
+      else { ON.dog = 0; resetGame(); cmdReply("Моти свернулся и уснул.", ""); }
+      return true;
     case "night":
       design = (design === "night") ? "day" : "night";
       cmdReply(design === "night" ? "Ночь. Говори тише, я почти сплю."
@@ -386,12 +470,18 @@ document.getElementById("cmdform").addEventListener("submit", e=>{
   inp.value = "";
 });
 /* Для проверки снаружи: сколько оформлений держим и какие команды знаем. */
-window.__ROOM = {designs: DESIGNS.slice(), commands: COMMANDS.slice(), design: ()=>design};
+window.__ROOM = {designs: DESIGNS.slice(), commands: COMMANDS.slice(), design: ()=>design,
+  game: ()=>({phase: GAME.phase, outcome: GAME.outcome, runs: GAME.runs})};
 
 document.getElementById("pult").addEventListener("click", e=>{
   const sw = e.target.dataset && e.target.dataset.sw;
   if(!sw) return;
-  ON[sw] = ON[sw] ? 0 : 1;
+  // Кнопка собаки делает то же, что команда dog: зовёт Моти на игру.
+  if(sw === "dog"){
+    if(!ON.dog){ ON.dog = 1; startGame(); } else { ON.dog = 0; resetGame(); }
+  } else {
+    ON[sw] = ON[sw] ? 0 : 1;
+  }
   paint();
   saveRoom();
   publish();
@@ -453,6 +543,7 @@ async function boot(){
       const m = /^m-([a-z]+)([01])$/.exec(c);
       if(m && SW.includes(m[1])) ON[m[1]] = Number(m[2]);
     });
+    injectGame();
     const kept = loadRoom();
     readUrl();
     const who = (kept && !urlPinned)
