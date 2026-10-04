@@ -240,59 +240,114 @@ const STORE = "domanov-room";
 const VISIT = "domanov-visit";
 let design = "day";
 
+/* Два языка: реплики персонажа идут на языке гостя, а не сервера. Русский — если
+   у гостя язык начинается на ru/be/uk/kk (эти читают по-русски), иначе английский.
+   Адрес ?lang=en|ru перебивает локаль: так ссылку можно послать другу за границей
+   и второй язык видно в своём браузере. */
+const LANG = (() => {
+  const q = new URLSearchParams(location.search).get("lang");
+  if(q) return q.toLowerCase().startsWith("en") ? "en" : "ru";
+  const l = (navigator.language || "ru").toLowerCase();
+  return /^(ru|be|uk|kk)/.test(l) ? "ru" : "en";
+})();
+document.documentElement.lang = LANG;
+
 /* Мидзу говорит: не картинка, а собеседник. Отвечает на сказанное, а не крутит
    один текст. Характер — спокойный, любопытный, с сухой иронией; реплики
-   зависят от часа гостя. Список умений — caps: его видно в ответ на «что
-   умеешь». Диалог только по клику: сама она не заговаривает, ничего не
-   всплывает. Канон персонажа — CHARACTER.md, тексты держим рядом с пультом,
-   чтобы слово и вид не расходились. */
+   зависят от часа гостя и от языка гостя (ru/en, выбор в LANG). Список умений —
+   caps: его видно в ответ на «что умеешь». Диалог только по клику: сама она не
+   заговаривает, ничего не всплывает. Канон персонажа — CHARACTER.md, тексты
+   держим рядом с пультом, чтобы слово и вид не расходились. */
 const MIZU = {
-  about: ["Мидзу. Живу в комнате, печатаю быстрее, чем говорю.",
-          "Люблю чай и тишину. Ирония без подколов — не обижайся."],
-  caps: ["свет — включу или погашу лампу",
-         "музыка, барабаны, гитара — играю по нажатию",
-         "Моти — бужу собаку",
-         "стены — меняю вид комнаты",
-         "чай — одно слово, и ты поймёшь",
-         "время — скажу, какой у тебя час"],
-  greet: {morning:"Доброе утро. Чайник греется.",
-          day:"День. Я за консолью, но слушаю.",
-          evening:"Вечер. Лампа тёплая, говори.",
-          night:"Ночь. Говори тише, я почти сплю."},
-  idle: {morning:["Утро пахнет чаем. Спрашивай.", "Окно открыла. Садись, расскажу."],
-         day:["Работаю. Спрашивай, отвечу по делу.", "День ровный, бумаги ждут. Твой ход."],
-         evening:["Читаю, но отложу абзац ради тебя.", "Лампа тёплая. Слушаю."],
-         night:["Дремлю в кресле. Экран ещё светит.", "Тише, ночь. Говори вполголоса."]}
+  ru: {
+    about: ["Мидзу. Живу в комнате, печатаю быстрее, чем говорю.",
+            "Люблю чай и тишину. Ирония без подколов — не обижайся."],
+    caps: ["свет — включу или погашу лампу",
+           "музыка, барабаны, гитара — играю по нажатию",
+           "Моти — бужу собаку",
+           "стены — меняю вид комнаты",
+           "чай — одно слово, и ты поймёшь",
+           "время — скажу, какой у тебя час"],
+    greet: {morning:"Доброе утро. Чайник греется.",
+            day:"День. Я за консолью, но слушаю.",
+            evening:"Вечер. Лампа тёплая, говори.",
+            night:"Ночь. Говори тише, я почти сплю."},
+    idle: {morning:["Утро пахнет чаем. Спрашивай.", "Окно открыла. Садись, расскажу."],
+           day:["Работаю. Спрашивай, отвечу по делу.", "День ровный, бумаги ждут. Твой ход."],
+           evening:["Читаю, но отложу абзац ради тебя.", "Лампа тёплая. Слушаю."],
+           night:["Дремлю в кресле. Экран ещё светит.", "Тише, ночь. Говори вполголоса."]},
+    who: "Мидзу › ",
+    say: {caps:"Умею немного:",
+          music:"Играю. Слушай, если не спешишь.",
+          drums:"Барабаны. Моти сейчас уйдёт спать в коридор.",
+          guitar:"Гитара на стене. Трону струну — комната дрогнет.",
+          dog:"Моти спит у тёплого места. Разбудить?",
+          tea:"Чай в четыре утра. Только между нами.",
+          sleepNight:"Ложись. Я погашу лампу, экран досветит.",
+          sleep:"Ложись, если надо. Я тут посижу.",
+          time:"У тебя сейчас "}
+  },
+  en: {
+    about: ["Mizu. I live in this room; I type faster than I talk.",
+            "I like tea and quiet. Dry humour, no barbs — don't take it personally."],
+    caps: ["the lamp — I switch it on or off",
+           "music, drums, guitar — I play when you press",
+           "Mochi — I wake the dog",
+           "the walls — I change how the room looks",
+           "tea — one word and you'll understand",
+           "the time — I'll tell you what hour it is for you"],
+    greet: {morning:"Morning. The kettle is warming.",
+            day:"Daytime. I'm at the console, but listening.",
+            evening:"Evening. The lamp is warm, talk to me.",
+            night:"Night. Keep it down, I'm nearly asleep."},
+    idle: {morning:["Morning smells of tea. Ask me something.", "I opened the window. Sit, I'll tell you."],
+           day:["Working. Ask, I'll answer to the point.", "A steady day, papers are waiting. Your move."],
+           evening:["I'm reading, but I'll put the page down for you.", "The lamp is warm. I'm listening."],
+           night:["Dozing in the chair. The screen is still glowing.", "Quiet, it's night. Speak half a voice."]},
+    who: "Mizu › ",
+    say: {caps:"A few things:",
+          music:"I'll play. Listen, if you're not in a hurry.",
+          drums:"Drums. Mochi will go sleep in the hallway now.",
+          guitar:"The guitar is on the wall. One string, and the room shivers.",
+          dog:"Mochi is asleep in the warm spot. Wake him?",
+          tea:"Tea at four in the morning. Just between us.",
+          sleepNight:"Go to bed. I'll turn the lamp off, the screen will keep you company.",
+          sleep:"Go to bed if you must. I'll sit here.",
+          time:"It is "}
+  }
 };
+const M = MIZU[LANG];
 let turn = 0;
 
 /* Возвращает список частей ответа: {say} — строка, {say, caps} — строка и
-   список умений. */
+   список умений. Ключевые слова ловим на обоих языках: гость вправе спросить
+   «what can you do», а ответ получит на своём. */
 function mizuAnswer(text, moment){
   const t = String(text || "").toLowerCase();
   const has = (...ws) => ws.some(w => t.includes(w));
-  if(has("привет","здравств","добрый","hi","hello","хай","салют"))
-    return [{say: MIZU.greet[moment]}];
-  if(has("что умеешь","умеешь","что можешь","помощь","help","команд","умения"))
-    return [{say: "Умею немного:", caps: true}];
-  if(has("кто ты","как тебя","тебя зовут","твоё имя","твое имя","о себе","мидзу","who are you"))
-    return MIZU.about.map(s => ({say: s}));
-  if(has("музык","играй","играть","мелоди","звук","песн"))
-    return [{say: "Играю. Слушай, если не спешишь."}];
-  if(has("барабан"))
-    return [{say: "Барабаны. Моти сейчас уйдёт спать в коридор."}];
-  if(has("гитар"))
-    return [{say: "Гитара на стене. Трону струну — комната дрогнет."}];
-  if(has("моти","собак","пёс","пес","щен"))
-    return [{say: "Моти спит у тёплого места. Разбудить?"}];
-  if(has("чай","секрет","тайна"))
-    return [{say: "Чай в четыре утра. Только между нами."}];
-  if(has("спать","спокойной ночи","устал","отдых"))
-    return [{say: moment === "night" ? "Ложись. Я погашу лампу, экран досветит."
-                                      : "Ложись, если надо. Я тут посижу."}];
-  if(has("время","который час","час","time"))
-    return [{say: "У тебя сейчас " + MOMENT_RU[moment] + "."}];
-  const pool = MIZU.idle[moment];
+  if(has("привет","здравств","добрый","хай","салют","hi","hello","hey","good day","morning","evening"))
+    return [{say: M.greet[moment]}];
+  if(has("что умеешь","умеешь","что можешь","помощь","help","команд","умения",
+         "what can you do","what do you do","commands","abilities","skills"))
+    return [{say: M.say.caps, caps: true}];
+  if(has("кто ты","как тебя","тебя зовут","твоё имя","твое имя","о себе","мидзу",
+         "who are you","your name","about you","mizu"))
+    return M.about.map(s => ({say: s}));
+  if(has("музык","играй","играть","мелоди","звук","песн","music","play a song","play me"))
+    return [{say: M.say.music}];
+  if(has("барабан","drum"))
+    return [{say: M.say.drums}];
+  if(has("гитар","guitar"))
+    return [{say: M.say.guitar}];
+  if(has("моти","собак","пёс","пес","щен","mochi","dog","puppy"))
+    return [{say: M.say.dog}];
+  if(has("чай","секрет","тайна","tea","secret"))
+    return [{say: M.say.tea}];
+  if(has("спать","спокойной ночи","устал","отдых","sleep","good night","tired","bed"))
+    return [{say: moment === "night" ? M.say.sleepNight : M.say.sleep}];
+  if(has("время","который час","час","time","what time"))
+    return [{say: M.say.time + MOMENT_WORD[LANG][moment] + "."}];
+  const pool = M.idle[moment];
   return [{say: pool[turn++ % pool.length]}];
 }
 
@@ -301,14 +356,14 @@ function sayNode(parts){
   box.className = "m";
   const who = document.createElement("span");
   who.className = "who";
-  who.textContent = "Мидзу › ";
+  who.textContent = M.who;
   box.appendChild(who);
   parts.forEach(part => {
     const line = document.createElement("div");
     line.textContent = part.say;
     box.appendChild(line);
     if(part.caps){
-      MIZU.caps.forEach(c => {
+      M.caps.forEach(c => {
         const cap = document.createElement("div");
         cap.className = "cap";
         cap.textContent = "— " + c;
@@ -332,6 +387,8 @@ let rest = "как оставил последний гость:";
    профиля: там лежат все четыре вида, нарисованные для одного состояния. */
 const HOURS = [[5, "morning"], [11, "day"], [18, "evening"], [22, "night"]];
 const MOMENT_RU = {morning: "утро", day: "день", evening: "вечер", night: "ночь"};
+const MOMENT_EN = {morning: "morning", day: "daytime", evening: "evening", night: "night"};
+const MOMENT_WORD = {ru: MOMENT_RU, en: MOMENT_EN};
 
 function guestMoment(){
   const hour = new Date().getHours();
