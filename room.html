@@ -52,6 +52,30 @@
        border:1px solid var(--rail);padding:7px 12px;cursor:pointer}
   #askform button:hover{border-color:var(--cyan);color:var(--cyan)}
   #talkhint{color:var(--dimmer);font-size:12px;padding:2px 0 0}
+  /* Командная строка комнаты: команда меняет вид, а не подпись. */
+  #cmdwrap{border-top:1px solid var(--rail);padding:12px 16px 4px}
+  #cmdout{color:var(--dim);font-size:13px;white-space:pre-wrap;min-height:18px}
+  #cmdout .ok{color:var(--lime)} #cmdout .warn{color:var(--amber)}
+  #cmdform{display:flex;gap:8px;padding:10px 0 2px}
+  #cmd{flex:1;background:rgba(46,230,255,.06);border:1px solid var(--rail);color:var(--text);
+       font:14px var(--mono);padding:7px 10px;border-radius:4px;outline:0}
+  #cmd:focus{border-color:var(--cyan)}
+  #cmdform button{font:12px var(--mono);color:var(--dim);background:transparent;
+       border:1px solid var(--rail);padding:7px 12px;cursor:pointer}
+  #cmdform button:hover{border-color:var(--cyan);color:var(--cyan)}
+  /* Оформления комнаты: их четыре — день, ночь, студия, скрытое. Команда
+     меняет свет и мебель, а не подпись. Класс ставит скрипт на корень <svg>. */
+  #stage svg.design-night{filter:brightness(.6) saturate(.75) contrast(1.06)}
+  #stage svg.design-night #sun{opacity:.12}
+  #stage svg.design-night #wall{fill:#0e1220}
+  #stage svg.design-studio{filter:sepia(.5) hue-rotate(-12deg) saturate(1.6) brightness(1.08)}
+  #stage svg.design-studio #wall{fill:#2a1e16}
+  #stage svg.design-studio #back{fill:#241a13}
+  #stage svg.design-studio #notes{display:inline}
+  #stage svg.design-secret{filter:hue-rotate(150deg) saturate(1.45) brightness(.95)}
+  #stage svg.design-secret #wall{fill:#141a2e}
+  #stage svg.design-secret #back{fill:#101426}
+  #stage svg.design-secret #secret{display:inline}
   @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} }
 </style>
 </head>
@@ -79,6 +103,15 @@
     <button data-sw="secret" aria-pressed="false">секрет</button>
   </div>
 
+  <div id="cmdwrap">
+    <div id="cmdout">комната слушает. набери help.</div>
+    <form id="cmdform" autocomplete="off">
+      <input id="cmd" type="text" placeholder="help · play · stop · drums · guitar · dog · night"
+             aria-label="команда комнате">
+      <button type="submit">ввод</button>
+    </form>
+  </div>
+
   <div id="talkwrap">
     <div id="talk" aria-live="polite"></div>
     <form id="askform" autocomplete="off">
@@ -93,6 +126,7 @@
     <a id="profile" href="https://github.com/Alexander-Domanov">профиль ↗</a>
     <a href="index.html">консоль ↗</a>
     <span id="clock">время суток — по твоим часам</span>
+    <span class="chip" id="design">оформление: день</span>
     <span class="chip" id="copy">скопировать ссылку</span>
     <span id="link"></span>
   </div>
@@ -123,6 +157,17 @@ const SAY = {
   lamp0:  "Свет выключила. Экрана хватит.",
   decor:  "Стены другие. Мне так спокойнее."
 };
+
+/* Оформления комнаты: их ровно четыре и ни одним больше — день, ночь, студия,
+   скрытое. Команда в командной строке меняет вид (свет, мебель), а вид держится
+   после перезагрузки. Скрытое слово есть здесь, но нигде не подписано: ни в help,
+   ни в тексте страницы — его надо угадать. */
+const DESIGNS = ["day", "night", "studio", "secret"];
+const SECRET_WORD = "сирень";
+const DESIGN_RU = {day:"день", night:"ночь", studio:"студия", secret:"скрытое"};
+const COMMANDS = ["help", "play", "stop", "drums", "guitar", "dog", "night"];
+const STORE = "domanov-room";
+let design = "day";
 
 /* Мидзу говорит: не картинка, а собеседник. Отвечает на сказанное, а не крутит
    один текст. Характер — спокойный, любопытный, с сухой иронией; реплики
@@ -228,11 +273,29 @@ const params = new URLSearchParams(location.search);
 
 function readUrl(){
   const r = params.get("r");
-  if(!r) return;
-  r.split(/[\s,]+/).forEach(tok=>{
-    const m = /^m-([a-z]+)([01])$/.exec(tok.trim());
-    if(m && SW.includes(m[1])) ON[m[1]] = Number(m[2]);
-  });
+  if(r){
+    r.split(/[\s,]+/).forEach(tok=>{
+      const m = /^m-([a-z]+)([01])$/.exec(tok.trim());
+      if(m && SW.includes(m[1])) ON[m[1]] = Number(m[2]);
+    });
+  }
+  const d = params.get("d");
+  if(d && DESIGNS.includes(d)) design = d;
+}
+
+/* Вид держится после перезагрузки: гость вернулся — комната стоит такой, какой
+   он её оставил. Адрес (?r=, ?d=) перебивает память. */
+function saveRoom(){
+  try{ localStorage.setItem(STORE, JSON.stringify({design: design, on: ON})); }catch(e){}
+}
+function loadRoom(){
+  try{
+    const s = JSON.parse(localStorage.getItem(STORE) || "null");
+    if(!s) return false;
+    if(DESIGNS.includes(s.design)) design = s.design;
+    if(s.on) SW.forEach(k => { if(k in s.on) ON[k] = s.on[k] ? 1 : 0; });
+    return true;
+  }catch(e){ return false; }
 }
 
 function stateClasses(){ return SW.map(k => "m-" + k + (ON[k] ? 1 : 0)).join(" "); }
@@ -249,26 +312,88 @@ function say_(){
 
 function paint(){
   if(!svg) return;
-  svg.setAttribute("class", base.concat(stateClasses()).join(" "));
+  svg.setAttribute("class", base.concat(stateClasses()).concat("design-" + design).join(" "));
   const line = say_();
   const t = svg.querySelector("#line");
   if(t && line) t.textContent = line;
-  say.textContent = line || (rest + " · жми кнопки");
+  say.textContent = line || (rest + " · жми кнопки или набери команду");
   [...document.querySelectorAll("#pult button")].forEach(b=>{
     b.setAttribute("aria-pressed", ON[b.dataset.sw] ? "true" : "false");
   });
+  const chip = document.getElementById("design");
+  if(chip) chip.textContent = "оформление: " + DESIGN_RU[design];
   const q = new URLSearchParams(location.search);
   q.set("r", stateClasses());
+  q.set("d", design);
   const url = location.pathname + "?" + q.toString();
   history.replaceState(null, "", url);
   link.textContent = location.origin + url;
 }
+
+/* Командная строка комнаты: команда меняет вид, а не только текст. Возвращает
+   true, если вид поменялся и страницу надо перерисовать. Незнакомое слово вид
+   не трогает — иначе «оформлением» станет что попало. */
+function cmdReply(text, cls){
+  const out = document.getElementById("cmdout");
+  out.innerHTML = "";
+  const row = document.createElement("div");
+  if(cls) row.className = cls;
+  row.textContent = text;
+  out.appendChild(row);
+}
+function runCommand(raw){
+  const t = String(raw || "").trim().toLowerCase();
+  if(!t) return false;
+  if(t === SECRET_WORD){
+    design = (design === "secret") ? "day" : "secret";
+    cmdReply("Тихо. Это моё оформление, другим не говорю.", "ok");
+    return true;
+  }
+  switch(t){
+    case "help":
+      cmdReply("команды: " + COMMANDS.join(" · ") + ". и одно редкое слово, которого здесь нет.", "");
+      return false;
+    case "play":
+      ON.music = 1; if(design === "day") design = "studio";
+      cmdReply(SAY.music, "ok"); return true;
+    case "stop":
+      ON.music = 0; if(design === "studio") design = "day";
+      cmdReply("Тишина. Вернула комнату как была.", ""); return true;
+    case "drums":
+      ON.drums = ON.drums ? 0 : 1;
+      cmdReply(ON.drums ? SAY.drums : "Барабаны смолкли. Моти вернулся.", ""); return true;
+    case "guitar":
+      ON.guitar = ON.guitar ? 0 : 1;
+      cmdReply(ON.guitar ? "Гитара на стене. Трону струну — комната дрогнет."
+                         : "Отложила гитару.", ""); return true;
+    case "dog":
+      ON.dog = ON.dog ? 0 : 1;
+      cmdReply(ON.dog ? SAY.dog : "Моти свернулся и уснул.", ""); return true;
+    case "night":
+      design = (design === "night") ? "day" : "night";
+      cmdReply(design === "night" ? "Ночь. Говори тише, я почти сплю."
+                                  : "Утро вернулось. Лампа тёплая.", "ok");
+      return true;
+    default:
+      cmdReply("неизвестная команда: " + t + " · набери help", "warn");
+      return false;
+  }
+}
+document.getElementById("cmdform").addEventListener("submit", e=>{
+  e.preventDefault();
+  const inp = document.getElementById("cmd");
+  if(runCommand(inp.value)){ paint(); saveRoom(); publish(); }
+  inp.value = "";
+});
+/* Для проверки снаружи: сколько оформлений держим и какие команды знаем. */
+window.__ROOM = {designs: DESIGNS.slice(), commands: COMMANDS.slice(), design: ()=>design};
 
 document.getElementById("pult").addEventListener("click", e=>{
   const sw = e.target.dataset && e.target.dataset.sw;
   if(!sw) return;
   ON[sw] = ON[sw] ? 0 : 1;
   paint();
+  saveRoom();
   publish();
 });
 
@@ -311,6 +436,7 @@ document.getElementById("askform").addEventListener("submit", e=>{
 async function boot(){
   readUrl();
   const mine = guestMoment();
+  const urlPinned = params.has("r") || params.has("d");
   try{
     const latest = await (await fetch(SRC + "latest.json", {cache:"no-store"})).json();
     // Вид по времени суток гостя. Если в указателе такого вида ещё нет (старый
@@ -321,13 +447,17 @@ async function boot(){
     svg = stage.querySelector("svg");
     base = [...svg.classList].filter(c => c.startsWith("moment-"));
     // Открываем комнату такой, какая она в профиле: состояние берём из самого
-    // файла, а не из выдуманного «по умолчанию». Ссылка ?r= перебивает файл.
+    // файла, а не из выдуманного «по умолчанию». Дальше память гостя (?r/?d
+    // перебивают) — чтобы вид держался после перезагрузки.
     svg.classList.forEach(c => {
       const m = /^m-([a-z]+)([01])$/.exec(c);
       if(m && SW.includes(m[1])) ON[m[1]] = Number(m[2]);
     });
+    const kept = loadRoom();
     readUrl();
-    const who = latest.stateFrom === "guest" ? "как оставил последний гость" : "как я её оставил";
+    const who = (kept && !urlPinned)
+      ? "как ты оставил в прошлый раз"
+      : (latest.stateFrom === "guest" ? "как оставил последний гость" : "как я её оставил");
     rest = "состояние: " + who + ":";
     const clock = document.getElementById("clock");
     clock.textContent = (file === latest.name)
