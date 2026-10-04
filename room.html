@@ -34,6 +34,24 @@
   #foot a{color:var(--cyan)} #link{color:var(--dimmer);word-break:break-all}
   .chip{border:1px solid var(--rail);padding:3px 9px;cursor:pointer;font-size:12px;color:var(--dim)}
   .chip:hover{border-color:var(--cyan);color:var(--cyan)}
+  #talkwrap{border-top:1px solid var(--rail);padding:12px 16px 4px}
+  #talk{display:flex;flex-direction:column;gap:9px;max-height:230px;overflow-y:auto;
+        scrollbar-width:thin}
+  #talk:empty{display:none}
+  .ex{display:flex;flex-direction:column;gap:3px;animation:in .18s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .me{color:#7fb0c8;font-size:13px;white-space:pre-wrap}
+  .m{color:var(--text);font-size:13px;white-space:pre-wrap}
+  .m .who{color:var(--magenta)}
+  .cap{color:var(--lime);font-size:13px}
+  #askform{display:flex;gap:8px;padding:10px 0 2px}
+  #ask{flex:1;background:rgba(46,230,255,.06);border:1px solid var(--rail);color:var(--text);
+       font:14px var(--mono);padding:7px 10px;border-radius:4px;outline:0}
+  #ask:focus{border-color:var(--cyan)}
+  #askform button{font:12px var(--mono);color:var(--dim);background:transparent;
+       border:1px solid var(--rail);padding:7px 12px;cursor:pointer}
+  #askform button:hover{border-color:var(--cyan);color:var(--cyan)}
+  #talkhint{color:var(--dimmer);font-size:12px;padding:2px 0 0}
   @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} }
 </style>
 </head>
@@ -59,6 +77,16 @@
     <button data-sw="dog"    aria-pressed="false">Моти</button>
     <button data-sw="decor"  aria-pressed="false">стены</button>
     <button data-sw="secret" aria-pressed="false">секрет</button>
+  </div>
+
+  <div id="talkwrap">
+    <div id="talk" aria-live="polite"></div>
+    <form id="askform" autocomplete="off">
+      <input id="ask" type="text" placeholder="спроси Мидзу — что умеешь · кто ты · чай"
+             aria-label="вопрос к Мидзу">
+      <button type="submit">спросить</button>
+    </form>
+    <div id="talkhint">диалог по клику: набери фразу и нажми Enter. сама она не заговаривает.</div>
   </div>
 
   <div id="foot">
@@ -95,6 +123,86 @@ const SAY = {
   lamp0:  "Свет выключила. Экрана хватит.",
   decor:  "Стены другие. Мне так спокойнее."
 };
+
+/* Мидзу говорит: не картинка, а собеседник. Отвечает на сказанное, а не крутит
+   один текст. Характер — спокойный, любопытный, с сухой иронией; реплики
+   зависят от часа гостя. Список умений — caps: его видно в ответ на «что
+   умеешь». Диалог только по клику: сама она не заговаривает, ничего не
+   всплывает. Канон персонажа — CHARACTER.md, тексты держим рядом с пультом,
+   чтобы слово и вид не расходились. */
+const MIZU = {
+  about: ["Мидзу. Живу в комнате, печатаю быстрее, чем говорю.",
+          "Люблю чай и тишину. Ирония без подколов — не обижайся."],
+  caps: ["свет — включу или погашу лампу",
+         "музыка, барабаны, гитара — играю по нажатию",
+         "Моти — бужу собаку",
+         "стены — меняю вид комнаты",
+         "чай — одно слово, и ты поймёшь",
+         "время — скажу, какой у тебя час"],
+  greet: {morning:"Доброе утро. Чайник греется.",
+          day:"День. Я за консолью, но слушаю.",
+          evening:"Вечер. Лампа тёплая, говори.",
+          night:"Ночь. Говори тише, я почти сплю."},
+  idle: {morning:["Утро пахнет чаем. Спрашивай.", "Окно открыла. Садись, расскажу."],
+         day:["Работаю. Спрашивай, отвечу по делу.", "День ровный, бумаги ждут. Твой ход."],
+         evening:["Читаю, но отложу абзац ради тебя.", "Лампа тёплая. Слушаю."],
+         night:["Дремлю в кресле. Экран ещё светит.", "Тише, ночь. Говори вполголоса."]}
+};
+let turn = 0;
+
+/* Возвращает список частей ответа: {say} — строка, {say, caps} — строка и
+   список умений. */
+function mizuAnswer(text, moment){
+  const t = String(text || "").toLowerCase();
+  const has = (...ws) => ws.some(w => t.includes(w));
+  if(has("привет","здравств","добрый","hi","hello","хай","салют"))
+    return [{say: MIZU.greet[moment]}];
+  if(has("что умеешь","умеешь","что можешь","помощь","help","команд","умения"))
+    return [{say: "Умею немного:", caps: true}];
+  if(has("кто ты","как тебя","тебя зовут","твоё имя","твое имя","о себе","мидзу","who are you"))
+    return MIZU.about.map(s => ({say: s}));
+  if(has("музык","играй","играть","мелоди","звук","песн"))
+    return [{say: "Играю. Слушай, если не спешишь."}];
+  if(has("барабан"))
+    return [{say: "Барабаны. Моти сейчас уйдёт спать в коридор."}];
+  if(has("гитар"))
+    return [{say: "Гитара на стене. Трону струну — комната дрогнет."}];
+  if(has("моти","собак","пёс","пес","щен"))
+    return [{say: "Моти спит у тёплого места. Разбудить?"}];
+  if(has("чай","секрет","тайна"))
+    return [{say: "Чай в четыре утра. Только между нами."}];
+  if(has("спать","спокойной ночи","устал","отдых"))
+    return [{say: moment === "night" ? "Ложись. Я погашу лампу, экран досветит."
+                                      : "Ложись, если надо. Я тут посижу."}];
+  if(has("время","который час","час","time"))
+    return [{say: "У тебя сейчас " + MOMENT_RU[moment] + "."}];
+  const pool = MIZU.idle[moment];
+  return [{say: pool[turn++ % pool.length]}];
+}
+
+function sayNode(parts){
+  const box = document.createElement("div");
+  box.className = "m";
+  const who = document.createElement("span");
+  who.className = "who";
+  who.textContent = "Мидзу › ";
+  box.appendChild(who);
+  parts.forEach(part => {
+    const line = document.createElement("div");
+    line.textContent = part.say;
+    box.appendChild(line);
+    if(part.caps){
+      MIZU.caps.forEach(c => {
+        const cap = document.createElement("div");
+        cap.className = "cap";
+        cap.textContent = "— " + c;
+        box.appendChild(cap);
+      });
+    }
+  });
+  return box;
+}
+
 const stage = document.getElementById("stage");
 const say = document.getElementById("say");
 const link = document.getElementById("link");
@@ -178,6 +286,26 @@ document.getElementById("copy").addEventListener("click", async ()=>{
   try{ await navigator.clipboard.writeText(location.href);
        document.getElementById("copy").textContent = "ссылка скопирована"; }
   catch{ location.hash = ""; }
+});
+
+/* Диалог: гость набрал фразу — Мидзу ответила. Сама она не заговаривает:
+   пока не нажмёшь Enter, в журнале пусто. */
+document.getElementById("askform").addEventListener("submit", e=>{
+  e.preventDefault();
+  const inp = document.getElementById("ask");
+  const q = (inp.value || "").trim();
+  if(!q) return;
+  const talk = document.getElementById("talk");
+  const ex = document.createElement("div");
+  ex.className = "ex";
+  const me = document.createElement("div");
+  me.className = "me";
+  me.textContent = "ты › " + q;
+  ex.appendChild(me);
+  ex.appendChild(sayNode(mizuAnswer(q, guestMoment())));
+  talk.appendChild(ex);
+  talk.scrollTop = talk.scrollHeight;
+  inp.value = "";
 });
 
 async function boot(){
