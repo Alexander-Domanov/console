@@ -727,10 +727,12 @@ if(!new URLSearchParams(location.search).get("noboot"))boot(); else {drawMeters(
 loadFigures();
 tapeRow();
 let greeted=false;
+// Раньше здесь первая же нажатая клавиша заводила плёнку гостя. Это автоплей:
+// гость шёл печатать команду, а получал звук. Теперь клавиша только говорит,
+// что плёнка есть и как её позвать; играет она по слову `music`.
 addEventListener("keydown",()=>{
-  if(greeted||tapeMuted) return; greeted=true;
-  if(tape && !tplaying && tapePlay(true))
-    ln("tape 01 \u00b7 your take from the studio is running underneath. type `studio` for the deck.","c-ok");
+  if(greeted) return; greeted=true;
+  if(tape) ln("tape 01 \u00b7 your take from the studio is here. type `music` to run it on this page.","c-dim");
 });
 inp.focus();
 </script>
