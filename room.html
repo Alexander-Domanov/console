@@ -51,6 +51,10 @@
   #stage svg[data-dog="away"] #mochi-sleep{display:inline!important;translate:-620px 66px}
   #stage svg[data-dog="away"] #bubble{display:none!important}
   #say{padding:0 16px;color:var(--dim);min-height:22px;font-size:13px}
+  /* Честная подпись: рядом с комнатой строка, что это живой код на странице, а
+     не картинка, и ссылка на исходники. Иначе комната смахивает на картинку. */
+  #cred{padding:2px 16px 4px;color:var(--dimmer);font-size:13px}
+  #cred a{color:var(--cyan)}
   #pult{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px 4px}
   #pult button{font:12px var(--mono);color:var(--dim);background:transparent;
        border:1px solid var(--rail);padding:7px 12px;cursor:pointer}
@@ -154,6 +158,9 @@
   <div id="stage"><div style="color:#5f849f;padding:40px 0;text-align:center">комната грузится…</div></div>
 
   <div id="say">жми кнопки: картинка меняется сразу, а состояние уезжает в адрес страницы</div>
+
+  <div id="cred">комната — живой код на этой странице, а не картинка.
+    <a id="credsrc" href="https://github.com/Alexander-Domanov/console">исходники ↗</a></div>
 
   <div id="pult">
     <button data-sw="lamp"   aria-pressed="true">свет</button>
