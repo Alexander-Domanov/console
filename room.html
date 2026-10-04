@@ -79,6 +79,10 @@
        border:1px solid var(--rail);padding:7px 12px;cursor:pointer}
   #askform button:hover{border-color:var(--cyan);color:var(--cyan)}
   #talkhint{color:var(--dimmer);font-size:12px;padding:2px 0 0}
+  /* Гость узнаётся: строка появляется только на возвращении; при первом заходе
+     элемента с текстом нет. Держим её рядом с диалогом. */
+  #hello{color:var(--dim);font-size:12px;padding:2px 0 0}
+  #hello:empty{display:none}
   /* Командная строка комнаты: команда меняет вид, а не подпись. */
   #cmdwrap{border-top:1px solid var(--rail);padding:12px 16px 4px}
   #cmdout{color:var(--dim);font-size:13px;white-space:pre-wrap;min-height:18px}
@@ -177,6 +181,7 @@
              aria-label="вопрос к Мидзу">
       <button type="submit">спросить</button>
     </form>
+    <div id="hello"></div>
     <div id="talkhint">диалог по клику: набери фразу и нажми Enter. сама она не заговаривает.</div>
   </div>
 
@@ -225,6 +230,7 @@ const SECRET_WORD = "сирень";
 const DESIGN_RU = {day:"день", night:"ночь", studio:"студия", secret:"скрытое"};
 const COMMANDS = ["help", "play", "stop", "drums", "guitar", "dog", "night"];
 const STORE = "domanov-room";
+const VISIT = "domanov-visit";
 let design = "day";
 
 /* Мидзу говорит: не картинка, а собеседник. Отвечает на сказанное, а не крутит
@@ -354,6 +360,26 @@ function loadRoom(){
     if(s.on) SW.forEach(k => { if(k in s.on) ON[k] = s.on[k] ? 1 : 0; });
     return true;
   }catch(e){ return false; }
+}
+
+/* Гость узнаётся: комната помнит, заходил ли человек раньше, и здоровается иначе.
+   Ничего личного не собираем — только отметка в браузере гостя, и она никуда не
+   уезжает: ни в адрес, ни на сервер, ни в куки. */
+function noteVisit(){
+  let back = false;
+  try{
+    back = !!localStorage.getItem(VISIT);
+    if(!back) localStorage.setItem(VISIT, new Date().toISOString().slice(0, 10));
+  }catch(e){ back = false; }
+  if(back){
+    try{
+      document.body.dataset.back = "1";
+      const h = document.getElementById("hello");
+      if(h) h.textContent = "с возвращением. я тебя помню по прошлым заходам — "
+        + "отметка лежит только в твоём браузере, никуда не уходит.";
+    }catch(e){}
+  }
+  return back;
 }
 
 /* Игра с мячом. Хозяин: «девочка может быть с кем-то играть, и она тоже будет
@@ -826,6 +852,7 @@ async function boot(){
     });
     injectGame();
     const kept = loadRoom();
+    noteVisit();
     readUrl();
     const who = (kept && !urlPinned)
       ? "как ты оставил в прошлый раз"
