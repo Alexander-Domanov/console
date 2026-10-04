@@ -710,8 +710,16 @@ async function boot(){
   for(const [t,c] of lines){await type(t,c,9); await sleep(90)}
   ln("");
   const p=new URLSearchParams(location.search);
-  if(p.get("auto")){
-    for(const c of p.get("auto").split("|")){await run(c); await sleep(450)}
+  const auto=p.get("auto");
+  if(auto){
+    // Раньше список команд из адреса выполнялся сам: гость приходил по ссылке и
+    // сразу получал и щелчки, и запущенную игру. Теперь страница только
+    // предлагает выполнить список — по слову гостя.
+    const list=auto.split("|").map(s=>s.trim()).filter(Boolean);
+    if(list.length){
+      ln("a scripted take is waiting: "+list.join(", ")+" \u00b7 nothing runs until you say so.","c-dim");
+      ln("\u25b6 run the take here","c-ok",{click:async()=>{for(const c of list){await run(c); await sleep(450)}}});
+    }
   }
 }
 inp.addEventListener("keydown",e=>{
