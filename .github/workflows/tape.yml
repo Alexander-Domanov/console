@@ -1,13 +1,20 @@
 name: tape
 
-# Draws the contribution tape (tape/<login>.svg) from the live figures.
+# Draws the contribution tape (tape/<login>.svg) from the live figures, then
+# republishes the site.
 #
 # Why it is built this way:
 #   * the picture is generated, not pasted: the worker reads the manifest that
 #     the profile repository rebuilds every night, so the strip is the real
 #     contribution history and never a hand-typed number;
 #   * stdlib Python only, no dependency to rot;
-#   * the job commits only when the drawn file actually differs.
+#   * the job commits only when the drawn file actually differs;
+#   * the site is served from the Pages deployment, not from the branch, so a
+#     commit alone does not change what a guest sees — this workflow republishes
+#     Pages itself. It has to: a push made with GITHUB_TOKEN cannot start the
+#     pages workflow (GitHub suppresses events raised by the built-in token),
+#     and the [skip ci] marker would suppress it anyway. Without these steps the
+#     live picture would keep yesterday's numbers forever.
 
 on:
   schedule:
@@ -24,6 +31,13 @@ concurrency:
 jobs:
   tape:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,3 +61,20 @@ jobs:
           git add tape
           git commit -m "chore(tape): redraw the contribution tape [skip ci]"
           git push
+
+      # The live figures for the console page, copied the same way pages.yml
+      # does it: if the profile repository is unreachable the deploy still
+      # succeeds and the page falls back to reading the manifest in the browser.
+      - name: Pull the live figures from the profile repository
+        run: |
+          curl -fsS --retry 3 --max-time 20 \
+            -o figures.json \
+            https://raw.githubusercontent.com/Alexander-Domanov/Alexander-Domanov/main/assets/out/manifest.json \
+            || rm -f figures.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
