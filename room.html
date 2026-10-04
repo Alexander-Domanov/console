@@ -126,6 +126,14 @@
   #stage svg[data-dog="voice"] #mochi-awake{translate:0 -16px}
   #stage svg[data-dog="voice"] #mochi-sleep{translate:0 -16px}
   #stage svg[data-dog="voice"] #bubble{display:inline}
+  /* Меньше движения: если гость выключил анимацию в системе, комната стоит, а не
+     дёргается. Это и доступность, и слабые телефоны. SMIL-анимации внутри файла
+     гасит скрипт (pauseAnimations), здесь — CSS: мигание лампы, дыхание комнаты,
+     всплытие реплик, переходы мяча. */
+  @media(prefers-reduced-motion:reduce){
+    #stage svg, #stage svg *{animation:none!important;transition:none!important}
+    .ex{animation:none!important}
+  }
   @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} #player{left:12px;bottom:10px;width:150px} }
 </style>
 </head>
@@ -782,6 +790,19 @@ document.getElementById("askform").addEventListener("submit", e=>{
   inp.value = "";
 });
 
+/* Меньше движения: гость выключил анимацию в системе — комната стоит. Файл
+   комнаты держит часть движения SMIL-тегами (<animate>), их гасит
+   pauseAnimations; CSS-анимации и переходы снимает медиа-запрос в <style>.
+   Комната при этом живая: команды и кнопки меняют вид, просто без перехода. */
+const REDUCE = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+function applyQuiet(node){
+  if(!REDUCE || !node) return;
+  if(node.pauseAnimations) node.pauseAnimations();
+  [node, ...node.querySelectorAll("*")].forEach(el => {
+    if(el.style){ el.style.animation = "none"; el.style.transition = "none"; }
+  });
+}
+
 async function boot(){
   readUrl();
   const mine = guestMoment();
@@ -815,6 +836,7 @@ async function boot(){
       ? "время суток — по твоим часам: " + MOMENT_RU[mine]
       : "время суток — по твоим часам: " + MOMENT_RU[mine] + " (профиль сейчас показывает другой вид)";
     paint();
+    applyQuiet(svg);
   }catch(err){
     stage.innerHTML = '<div style="color:#ff3d9a;padding:24px 0">комната не приехала: ' +
       (err && err.message ? err.message : err) + "</div>";
