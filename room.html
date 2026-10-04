@@ -92,6 +92,13 @@
        transition:translate .5s ease, rotate .5s ease}
   #stage svg[data-mood="lost"] #mizu{translate:0 2px;rotate:2deg;
        transition:translate .5s ease, rotate .5s ease}
+  /* Собака слушается: у каждой просьбы своя поза, а пузырь — её голос. */
+  #stage svg #mochi-awake, #stage svg #mochi-sleep{transition:translate .45s ease, rotate .45s ease}
+  #stage svg[data-dog="sit"] #mochi-awake{translate:16px 4px;rotate:-9deg}
+  #stage svg[data-dog="sit"] #mochi-sleep{translate:16px 4px;rotate:-11deg}
+  #stage svg[data-dog="voice"] #mochi-awake{translate:0 -16px}
+  #stage svg[data-dog="voice"] #mochi-sleep{translate:0 -16px}
+  #stage svg[data-dog="voice"] #bubble{display:inline}
   @media(max-width:560px){ #stage{padding:10px 10px 2px} #pult{padding:10px} #foot{padding:10px} }
 </style>
 </head>
@@ -379,6 +386,57 @@ function finishGame(){
   saveRoom();
 }
 
+/* Собака слушается. Слова живут внутри команды dog: так в консоли остаётся ровно
+   семь команд, как записано в ограничениях волны, а у Моти появляется свой язык.
+   Слушается он не всегда: каждая пятая просьба мимо, плюс редкий случай. Поза
+   едет в атрибуте data-dog, а не в классе: класс описывает комнату и уезжает в
+   адрес, а просьба — событие гостя, ссылку она ломать не должна. */
+const DOG_WORDS = ["сидеть", "голос", "принеси", "спать"];
+const DOG = {pose: "idle", tries: 0, ignores: 0, last: ""};
+const DOG_LINE = {
+  sit: "Сижу. Пока просишь вежливо.",
+  voice: "Гав! Гав! Одного раза хватило бы.",
+  fetch: "Иду за мячом.",
+  sleep: "Спит. До утра не будить.",
+  ignore: "Сделал вид, что не слышал. Бывает."
+};
+
+function applyDog(){
+  if(!svg) return;
+  if(DOG.pose && DOG.pose !== "idle") svg.setAttribute("data-dog", DOG.pose);
+  else svg.removeAttribute("data-dog");
+}
+
+/* Пузырь — её голос: текст и ширина меняются вместе со словом. */
+function voiceBubble(loud){
+  const b = svg && svg.querySelector("#bubble");
+  if(!b) return;
+  const t = b.querySelector("text"), r = b.querySelector("rect");
+  if(t){ t.textContent = loud ? "гав! гав!" : "гав"; t.setAttribute("x", loud ? "758" : "747"); }
+  if(r){ r.setAttribute("width", loud ? "84" : "62"); }
+}
+
+function dogWord(word){
+  const w = String(word || "").trim().toLowerCase();
+  if(DOG_WORDS.indexOf(w) < 0) return null;
+  DOG.tries += 1;
+  DOG.last = w;
+  if((DOG.tries % 5 === 0) || Math.random() < 0.08){
+    DOG.ignores += 1;
+    DOG.pose = "ignore";
+    cmdReply("Моти не стал. Попроси ещё раз, может и послушает.", "warn");
+    paint(); saveRoom(); publish();
+    return "ignore";
+  }
+  if(w === "принеси"){ DOG.pose = "fetch"; ON.dog = 1; voiceBubble(false); startGame(); return "fetch"; }
+  if(w === "спать"){ DOG.pose = "sleep"; ON.dog = 0; resetGame(); voiceBubble(false); }
+  if(w === "сидеть"){ DOG.pose = "sit"; ON.dog = 1; resetGame(); voiceBubble(false); }
+  if(w === "голос"){ DOG.pose = "voice"; ON.dog = 1; resetGame(); voiceBubble(true); }
+  cmdReply("Моти: " + w + ". " + DOG_LINE[DOG.pose], "ok");
+  paint(); saveRoom(); publish();
+  return DOG.pose;
+}
+
 function stateClasses(){ return SW.map(k => "m-" + k + (ON[k] ? 1 : 0)).join(" "); }
 
 function say_(){
@@ -395,7 +453,8 @@ function paint(){
   if(!svg) return;
   svg.setAttribute("class", base.concat(stateClasses()).concat("design-" + design).join(" "));
   applyGame();
-  const line = gameLine || say_();
+  applyDog();
+  const line = gameLine || DOG_LINE[DOG.pose] || say_();
   const t = svg.querySelector("#line");
   if(t && line) t.textContent = line;
   say.textContent = line || (rest + " · жми кнопки или набери команду");
@@ -426,14 +485,21 @@ function cmdReply(text, cls){
 function runCommand(raw){
   const t = String(raw || "").trim().toLowerCase();
   if(!t) return false;
+  const parts = t.split(/\s+/);
+  const head = parts[0], tail = parts.slice(1).join(" ");
   if(t === SECRET_WORD){
     design = (design === "secret") ? "day" : "secret";
     cmdReply("Тихо. Это моё оформление, другим не говорю.", "ok");
     return true;
   }
-  switch(t){
+  // Слово собаке само по себе — не команда: подсказываем, как позвать.
+  if(!tail && DOG_WORDS.indexOf(head) >= 0){
+    cmdReply("Это собаке. Позови её: dog " + head, "warn");
+    return false;
+  }
+  switch(head){
     case "help":
-      cmdReply("команды: " + COMMANDS.join(" · ") + ". и одно редкое слово, которого здесь нет.", "");
+      cmdReply("команды: " + COMMANDS.join(" · ") + ". у собаки свои слова: dog сидеть · dog голос · dog принеси · dog спать. и одно редкое слово, которого здесь нет.", "");
       return false;
     case "play":
       ON.music = 1; if(design === "day") design = "studio";
@@ -449,7 +515,12 @@ function runCommand(raw){
       cmdReply(ON.guitar ? "Гитара на стене. Трону струну — комната дрогнет."
                          : "Отложила гитару.", ""); return true;
     case "dog":
-      // Зовём Моти на игру. Второй раз — отзываем: он сворачивается и спит.
+      // Со словом — просьба собаке. Без слова — позвать Моти на игру, а вторым
+      // разом отозвать: он сворачивается и спит.
+      if(tail){
+        if(!dogWord(tail)) cmdReply("Моти такого не знает: сидеть · голос · принеси · спать.", "warn");
+        return true;
+      }
       if(!ON.dog){ ON.dog = 1; startGame(); }
       else { ON.dog = 0; resetGame(); cmdReply("Моти свернулся и уснул.", ""); }
       return true;
@@ -471,7 +542,8 @@ document.getElementById("cmdform").addEventListener("submit", e=>{
 });
 /* Для проверки снаружи: сколько оформлений держим и какие команды знаем. */
 window.__ROOM = {designs: DESIGNS.slice(), commands: COMMANDS.slice(), design: ()=>design,
-  game: ()=>({phase: GAME.phase, outcome: GAME.outcome, runs: GAME.runs})};
+  game: ()=>({phase: GAME.phase, outcome: GAME.outcome, runs: GAME.runs}),
+  dog: ()=>({pose: DOG.pose, tries: DOG.tries, ignores: DOG.ignores, last: DOG.last})};
 
 document.getElementById("pult").addEventListener("click", e=>{
   const sw = e.target.dataset && e.target.dataset.sw;
