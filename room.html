@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -152,52 +152,52 @@
     <span class="dot" style="background:#febc2e"></span>
     <span class="dot" style="background:#28c840"></span>
     <span class="t">domanov@vps — ~/room</span>
-    <span class="right">ПУЛЬТ</span>
+    <span class="right">CONTROL</span>
   </div>
 
-  <div id="stage"><div style="color:#5f849f;padding:40px 0;text-align:center">комната грузится…</div></div>
+  <div id="stage"><div style="color:#5f849f;padding:40px 0;text-align:center">the room is loading…</div></div>
 
-  <div id="say">жми кнопки: картинка меняется сразу, а состояние уезжает в адрес страницы</div>
+  <div id="say">press the switches: the picture changes at once and the state rides into the page address</div>
 
-  <div id="cred">комната — живой код на этой странице, а не картинка.
-    <a id="credsrc" href="https://github.com/Alexander-Domanov/console">исходники ↗</a></div>
+  <div id="cred">the room is live code on this page, not a picture.
+    <a id="credsrc" href="https://github.com/Alexander-Domanov/console">source ↗</a></div>
 
   <div id="pult">
-    <button data-sw="lamp"   aria-pressed="true">свет</button>
-    <button data-sw="music"  aria-pressed="false">музыка</button>
-    <button data-sw="drums"  aria-pressed="false">барабаны</button>
-    <button data-sw="guitar" aria-pressed="false">гитара</button>
-    <button data-sw="dog"    aria-pressed="false">Моти</button>
-    <button data-sw="decor"  aria-pressed="false">стены</button>
-    <button data-sw="secret" aria-pressed="false">секрет</button>
+    <button data-sw="lamp"   aria-pressed="true">light</button>
+    <button data-sw="music"  aria-pressed="false">music</button>
+    <button data-sw="drums"  aria-pressed="false">drums</button>
+    <button data-sw="guitar" aria-pressed="false">guitar</button>
+    <button data-sw="dog"    aria-pressed="false">Mochi</button>
+    <button data-sw="decor"  aria-pressed="false">walls</button>
+    <button data-sw="secret" aria-pressed="false">secret</button>
   </div>
 
   <div id="cmdwrap">
-    <div id="cmdout">комната слушает. набери help.</div>
+    <div id="cmdout">the room is listening. type help.</div>
     <form id="cmdform" autocomplete="off">
       <input id="cmd" type="text" placeholder="help · play · stop · drums · guitar · dog · night"
-             aria-label="команда комнате">
-      <button type="submit">ввод</button>
+             aria-label="command to the room">
+      <button type="submit">send</button>
     </form>
   </div>
 
   <div id="talkwrap">
     <div id="talk" aria-live="polite"></div>
     <form id="askform" autocomplete="off">
-      <input id="ask" type="text" placeholder="спроси Мидзу — что умеешь · кто ты · чай"
-             aria-label="вопрос к Мидзу">
-      <button type="submit">спросить</button>
+      <input id="ask" type="text" placeholder="ask Mizu — what can you do · who are you · tea"
+             aria-label="question for Mizu">
+      <button type="submit">ask</button>
     </form>
     <div id="hello"></div>
-    <div id="talkhint">диалог по клику: набери фразу и нажми Enter. сама она не заговаривает.</div>
+    <div id="talkhint">talk on demand: type a line and press Enter. she never speaks first.</div>
   </div>
 
   <div id="foot">
-    <a id="profile" href="https://github.com/Alexander-Domanov">профиль ↗</a>
-    <a href="index.html">консоль ↗</a>
-    <span id="clock">время суток — по твоим часам</span>
-    <span class="chip" id="design">оформление: день</span>
-    <span class="chip" id="copy">скопировать ссылку</span>
+    <a id="profile" href="https://github.com/Alexander-Domanov">profile ↗</a>
+    <a href="index.html">console ↗</a>
+    <span id="clock">time of day follows your clock</span>
+    <span class="chip" id="design">look: day</span>
+    <span class="chip" id="copy">copy the link</span>
     <span id="link"></span>
   </div>
 </div>
@@ -220,12 +220,12 @@ const REMOTE = "https://ntfy.sh/domanov-room-4f2c9ab71e05";
 const SW = ["lamp", "music", "drums", "guitar", "dog", "decor", "secret"];
 const ON = {lamp:1, music:0, drums:0, guitar:0, decor:0, secret:0, dog:0};
 const SAY = {
-  secret: "Нашла. Чай в четыре утра, только между нами.",
-  drums:  "Барабаны. Моти сейчас уйдёт спать в коридор.",
-  music:  "Играю. Слушай, если не спешишь.",
-  dog:    "Моти проснулся. Он тебя видит.",
-  lamp0:  "Свет выключила. Экрана хватит.",
-  decor:  "Стены другие. Мне так спокойнее."
+  secret: "Found it. Tea at four in the morning. Just between us.",
+  drums:  "Drums. Mochi will go sleep in the hallway now.",
+  music:  "Playing. Listen, if you are not in a hurry.",
+  dog:    "Mochi is awake. He can see you.",
+  lamp0:  "Lamp off. The screen is enough.",
+  decor:  "Different walls. I breathe easier like this."
 };
 
 /* Оформления комнаты: их ровно четыре и ни одним больше — день, ночь, студия,
@@ -233,8 +233,8 @@ const SAY = {
    после перезагрузки. Скрытое слово есть здесь, но нигде не подписано: ни в help,
    ни в тексте страницы — его надо угадать. */
 const DESIGNS = ["day", "night", "studio", "secret"];
-const SECRET_WORD = "сирень";
-const DESIGN_RU = {day:"день", night:"ночь", studio:"студия", secret:"скрытое"};
+const SECRET_WORD = "lilac";
+const DESIGN_WORD = {day:"day", night:"night", studio:"studio", secret:"hidden"};
 const COMMANDS = ["help", "play", "stop", "drums", "guitar", "dog", "night"];
 const STORE = "domanov-room";
 const VISIT = "domanov-visit";
@@ -244,12 +244,7 @@ let design = "day";
    у гостя язык начинается на ru/be/uk/kk (эти читают по-русски), иначе английский.
    Адрес ?lang=en|ru перебивает локаль: так ссылку можно послать другу за границей
    и второй язык видно в своём браузере. */
-const LANG = (() => {
-  const q = new URLSearchParams(location.search).get("lang");
-  if(q) return q.toLowerCase().startsWith("en") ? "en" : "ru";
-  const l = (navigator.language || "ru").toLowerCase();
-  return /^(ru|be|uk|kk)/.test(l) ? "ru" : "en";
-})();
+const LANG = "en";
 document.documentElement.lang = LANG;
 
 /* Мидзу говорит: не картинка, а собеседник. Отвечает на сказанное, а не крутит
@@ -259,34 +254,6 @@ document.documentElement.lang = LANG;
    заговаривает, ничего не всплывает. Канон персонажа — CHARACTER.md, тексты
    держим рядом с пультом, чтобы слово и вид не расходились. */
 const MIZU = {
-  ru: {
-    about: ["Мидзу. Живу в комнате, печатаю быстрее, чем говорю.",
-            "Люблю чай и тишину. Ирония без подколов — не обижайся."],
-    caps: ["свет — включу или погашу лампу",
-           "музыка, барабаны, гитара — играю по нажатию",
-           "Моти — бужу собаку",
-           "стены — меняю вид комнаты",
-           "чай — одно слово, и ты поймёшь",
-           "время — скажу, какой у тебя час"],
-    greet: {morning:"Доброе утро. Чайник греется.",
-            day:"День. Я за консолью, но слушаю.",
-            evening:"Вечер. Лампа тёплая, говори.",
-            night:"Ночь. Говори тише, я почти сплю."},
-    idle: {morning:["Утро пахнет чаем. Спрашивай.", "Окно открыла. Садись, расскажу."],
-           day:["Работаю. Спрашивай, отвечу по делу.", "День ровный, бумаги ждут. Твой ход."],
-           evening:["Читаю, но отложу абзац ради тебя.", "Лампа тёплая. Слушаю."],
-           night:["Дремлю в кресле. Экран ещё светит.", "Тише, ночь. Говори вполголоса."]},
-    who: "Мидзу › ",
-    say: {caps:"Умею немного:",
-          music:"Играю. Слушай, если не спешишь.",
-          drums:"Барабаны. Моти сейчас уйдёт спать в коридор.",
-          guitar:"Гитара на стене. Трону струну — комната дрогнет.",
-          dog:"Моти спит у тёплого места. Разбудить?",
-          tea:"Чай в четыре утра. Только между нами.",
-          sleepNight:"Ложись. Я погашу лампу, экран досветит.",
-          sleep:"Ложись, если надо. Я тут посижу.",
-          time:"У тебя сейчас "}
-  },
   en: {
     about: ["Mizu. I live in this room; I type faster than I talk.",
             "I like tea and quiet. Dry humour, no barbs — don't take it personally."],
@@ -325,28 +292,27 @@ let turn = 0;
 function mizuAnswer(text, moment){
   const t = String(text || "").toLowerCase();
   const has = (...ws) => ws.some(w => t.includes(w));
-  if(has("привет","здравств","добрый","хай","салют","hi","hello","hey","good day","morning","evening"))
+  if(has("hi","hello","hey","good day","good morning","good evening","morning","evening"))
     return [{say: M.greet[moment]}];
-  if(has("что умеешь","умеешь","что можешь","помощь","help","команд","умения",
-         "what can you do","what do you do","commands","abilities","skills"))
+  if(has("what can you do","what do you do","commands","abilities","skills","help",
+         "capabilities"))
     return [{say: M.say.caps, caps: true}];
-  if(has("кто ты","как тебя","тебя зовут","твоё имя","твое имя","о себе","мидзу",
-         "who are you","your name","about you","mizu"))
+  if(has("who are you","your name","about you","mizu","about yourself"))
     return M.about.map(s => ({say: s}));
-  if(has("музык","играй","играть","мелоди","звук","песн","music","play a song","play me"))
+  if(has("music","play a song","play me","play something","melody"))
     return [{say: M.say.music}];
-  if(has("барабан","drum"))
+  if(has("drum"))
     return [{say: M.say.drums}];
-  if(has("гитар","guitar"))
+  if(has("guitar"))
     return [{say: M.say.guitar}];
-  if(has("моти","собак","пёс","пес","щен","mochi","dog","puppy"))
+  if(has("mochi","dog","puppy"))
     return [{say: M.say.dog}];
-  if(has("чай","секрет","тайна","tea","secret"))
+  if(has("tea","secret"))
     return [{say: M.say.tea}];
-  if(has("спать","спокойной ночи","устал","отдых","sleep","good night","tired","bed"))
+  if(has("sleep","good night","tired","bed","rest"))
     return [{say: moment === "night" ? M.say.sleepNight : M.say.sleep}];
-  if(has("время","который час","час","time","what time"))
-    return [{say: M.say.time + MOMENT_WORD[LANG][moment] + "."}];
+  if(has("time","what time","the hour"))
+    return [{say: M.say.time + MOMENT_EN[moment] + "."}];
   const pool = M.idle[moment];
   return [{say: pool[turn++ % pool.length]}];
 }
@@ -379,16 +345,14 @@ const say = document.getElementById("say");
 const link = document.getElementById("link");
 let svg = null;
 let base = [];
-let rest = "как оставил последний гость:";
+let rest = "as the last guest left it:";
 
 /* Время суток берём у гостя, а не у сервера: у человека вечер — значит вечер.
    Границы те же, что в scripts/room.py (HOURS): до 5 ночь, с 5 утро, с 11 день,
    с 18 вечер, с 22 ночь. Вид берём из карты «время суток → файл» в указателе
    профиля: там лежат все четыре вида, нарисованные для одного состояния. */
 const HOURS = [[5, "morning"], [11, "day"], [18, "evening"], [22, "night"]];
-const MOMENT_RU = {morning: "утро", day: "день", evening: "вечер", night: "ночь"};
 const MOMENT_EN = {morning: "morning", day: "daytime", evening: "evening", night: "night"};
-const MOMENT_WORD = {ru: MOMENT_RU, en: MOMENT_EN};
 
 function guestMoment(){
   const hour = new Date().getHours();
@@ -439,8 +403,8 @@ function noteVisit(){
     try{
       document.body.dataset.back = "1";
       const h = document.getElementById("hello");
-      if(h) h.textContent = "с возвращением. я тебя помню по прошлым заходам — "
-        + "отметка лежит только в твоём браузере, никуда не уходит.";
+      if(h) h.textContent = "welcome back. I remember you from earlier visits - "
+        + "the note lives in your browser only and goes nowhere.";
     }catch(e){}
   }
   return back;
@@ -460,7 +424,7 @@ let gameLine = "";
 function applyGame(){
   if(!svg) return;
   const done = GAME.phase === "done";
-  const brings = GAME.outcome === "принёс";
+  const brings = GAME.outcome === "brought";
   const g = GAME.phase === "flying" ? "flying" : (done ? (brings ? "brings" : "distracts") : "");
   const m = done ? (brings ? "play" : "lost") : "";
   if(g) svg.setAttribute("data-game", g); else svg.removeAttribute("data-game");
@@ -490,7 +454,7 @@ function resetGame(){
 function startGame(){
   resetGame();
   GAME.phase = "flying";
-  cmdReply("Зову Моти. Бросаю мяч.", "");
+  cmdReply("Calling Mochi. Throwing the ball.", "");
   paint();
   gameTimer = setTimeout(finishGame, 2600);
 }
@@ -499,13 +463,13 @@ function finishGame(){
   clearTimeout(gameTimer);
   const brings = Math.random() < 0.65;
   GAME.phase = "done";
-  GAME.outcome = brings ? "принёс" : "отвлёкся";
+  GAME.outcome = brings ? "brought" : "distracted";
   GAME.runs += 1;
   ON.dog = brings ? 1 : 0;
-  gameLine = brings ? "Принёс! Умница. Теперь можно и чаю."
-                    : "Ушёл по своим делам. Мяч лежит, ищи сам.";
-  cmdReply(brings ? "Моти принёс мяч. Исход игры: принёс."
-                  : "Моти отвлёкся и убежал. Исход игры: отвлёкся.",
+  gameLine = brings ? "He brought it! Good dog. Tea, then."
+                    : "He wandered off. The ball is out there, go find it.";
+  cmdReply(brings ? "Mochi brought the ball. Game outcome: brought."
+                  : "Mochi got distracted and ran off. Game outcome: distracted.",
            brings ? "ok" : "warn");
   paint();
   saveRoom();
@@ -516,14 +480,14 @@ function finishGame(){
    Слушается он не всегда: каждая пятая просьба мимо, плюс редкий случай. Поза
    едет в атрибуте data-dog, а не в классе: класс описывает комнату и уезжает в
    адрес, а просьба — событие гостя, ссылку она ломать не должна. */
-const DOG_WORDS = ["сидеть", "голос", "принеси", "спать"];
+const DOG_WORDS = ["sit", "voice", "fetch", "sleep"];
 const DOG = {pose: "idle", tries: 0, ignores: 0, last: ""};
 const DOG_LINE = {
-  sit: "Сижу. Пока просишь вежливо.",
-  voice: "Гав! Гав! Одного раза хватило бы.",
-  fetch: "Иду за мячом.",
-  sleep: "Спит. До утра не будить.",
-  ignore: "Сделал вид, что не слышал. Бывает."
+  sit: "Sitting. As long as you ask nicely.",
+  voice: "Woof! Woof! One would have been enough.",
+  fetch: "Going for the ball.",
+  sleep: "Asleep. Not to be woken before morning.",
+  ignore: "Pretended not to hear. It happens."
 };
 
 /* Инструменты и плеер. Хозяин: «можно ей гитару дать и барабаны, плеер».
@@ -534,9 +498,9 @@ const DOG_LINE = {
 const BPM = 96;
 const GUITAR_NOTES = [196, 247, 294, 330, 294, 247, 220, 247];
 const MUSIC_LINES = {
-  playing: ["Барабаны и гитара. Держу.", "Играю. Слушай.", "Ритм держу.", "Струна и бит."],
-  idle:    ["Струны молчат. Тронуть?", "Инструменты ждут. Скажи play.",
-            "Тишина. Но я рядом.", "Гитара на стене. Начнём?"]
+  playing: ["Drums and guitar. Holding it.", "Playing. Listen.", "Keeping the beat.", "A string and a bit."],
+  idle:    ["The strings are quiet. Shall I touch them?", "The instruments are waiting. Say play.",
+            "Silence. But I am here.", "The guitar is on the wall. Shall we start?"]
 };
 let musicOn = false, musicLine = "", musicCtx = null, musicMaster = null, musicAnalyser = null,
     musicData = null, musicPad = null, musicNoise = null, beatTimer = null, beatStep = 0,
@@ -633,10 +597,10 @@ function injectPlayer(){
   if(!stage || document.getElementById("player")) return;
   const box = document.createElement("div");
   box.id = "player"; box.setAttribute("data-on", "0");
-  box.innerHTML = '<div class="pt"><span>плеер</span><span id="pstate">остановлено</span></div>'
-    + '<div id="ptrack">тишина</div>'
+  box.innerHTML = '<div class="pt"><span>player</span><span id="pstate">stopped</span></div>'
+    + '<div id="ptrack">silence</div>'
     + '<div id="plevel"><span id="pbar"></span></div>'
-    + '<button id="pbtn" type="button">играть</button>';
+    + '<button id="pbtn" type="button">play</button>';
   stage.appendChild(box);
   box.querySelector("#pbtn").addEventListener("click", ()=>{
     if(musicOn){ stopMusic(); ON.music = 0; } else { ON.music = 1; startMusic(); }
@@ -650,9 +614,9 @@ function updatePlayer(){
   win.setAttribute("data-on", musicOn ? "1" : "0");
   const st = document.getElementById("pstate"), btn = document.getElementById("pbtn"),
         tr = document.getElementById("ptrack");
-  if(st) st.textContent = musicOn ? "идёт воспроизведение" : "остановлено";
-  if(btn) btn.textContent = musicOn ? "стоп" : "играть";
-  if(tr) tr.textContent = musicOn ? "гитара · барабаны" : "тишина";
+  if(st) st.textContent = musicOn ? "playing" : "stopped";
+  if(btn) btn.textContent = musicOn ? "stop" : "play";
+  if(tr) tr.textContent = musicOn ? "guitar · drums" : "silence";
 }
 /* Голос Моти: текст и ширина пузыря меняются вместе со словом. */
 function bubbleSay(text){
@@ -665,7 +629,7 @@ function bubbleSay(text){
 /* Барабаны: Моти просыпается от стука, воет и уходит спать подальше от шума. */
 function drumsScene(){
   dogScene = "howl"; ON.dog = 1;
-  bubbleSay("Ууу!");
+  bubbleSay("Ooow!");
   clearTimeout(sceneTimer);
   sceneTimer = setTimeout(()=>{
     dogScene = "away"; ON.dog = 0;
@@ -686,7 +650,7 @@ function voiceBubble(loud){
   const b = svg && svg.querySelector("#bubble");
   if(!b) return;
   const t = b.querySelector("text"), r = b.querySelector("rect");
-  if(t){ t.textContent = loud ? "гав! гав!" : "гав"; t.setAttribute("x", loud ? "758" : "747"); }
+  if(t){ t.textContent = loud ? "woof! woof!" : "woof"; t.setAttribute("x", loud ? "758" : "747"); }
   if(r){ r.setAttribute("width", loud ? "84" : "62"); }
 }
 
@@ -698,15 +662,15 @@ function dogWord(word){
   if((DOG.tries % 5 === 0) || Math.random() < 0.08){
     DOG.ignores += 1;
     DOG.pose = "ignore";
-    cmdReply("Моти не стал. Попроси ещё раз, может и послушает.", "warn");
+    cmdReply("Mochi did not do it. Ask again, he might listen.", "warn");
     paint(); saveRoom(); publish();
     return "ignore";
   }
-  if(w === "принеси"){ DOG.pose = "fetch"; ON.dog = 1; voiceBubble(false); startGame(); return "fetch"; }
-  if(w === "спать"){ DOG.pose = "sleep"; ON.dog = 0; resetGame(); voiceBubble(false); }
-  if(w === "сидеть"){ DOG.pose = "sit"; ON.dog = 1; resetGame(); voiceBubble(false); }
-  if(w === "голос"){ DOG.pose = "voice"; ON.dog = 1; resetGame(); voiceBubble(true); }
-  cmdReply("Моти: " + w + ". " + DOG_LINE[DOG.pose], "ok");
+  if(w === "fetch"){ DOG.pose = "fetch"; ON.dog = 1; voiceBubble(false); startGame(); return "fetch"; }
+  if(w === "sleep"){ DOG.pose = "sleep"; ON.dog = 0; resetGame(); voiceBubble(false); }
+  if(w === "sit"){ DOG.pose = "sit"; ON.dog = 1; resetGame(); voiceBubble(false); }
+  if(w === "voice"){ DOG.pose = "voice"; ON.dog = 1; resetGame(); voiceBubble(true); }
+  cmdReply("Mochi: " + w + ". " + DOG_LINE[DOG.pose], "ok");
   paint(); saveRoom(); publish();
   return DOG.pose;
 }
@@ -728,17 +692,17 @@ function paint(){
   svg.setAttribute("class", base.concat(stateClasses()).concat("design-" + design).join(" "));
   applyGame();
   applyDog();
-  const line = dogScene === "howl" ? "Моти проснулся от барабанов и завыл."
-             : dogScene === "away" ? "Моти ушёл спать в коридор, подальше от шума."
+  const line = dogScene === "howl" ? "Mochi woke up from the drums and howled."
+             : dogScene === "away" ? "Mochi went to sleep in the hallway, away from the noise."
              : (gameLine || (musicOn ? musicLine : "") || DOG_LINE[DOG.pose] || say_());
   const t = svg.querySelector("#line");
   if(t && line) t.textContent = line;
-  say.textContent = line || (rest + " · жми кнопки или набери команду");
+  say.textContent = line || (rest + " · press the switches or type a command");
   [...document.querySelectorAll("#pult button")].forEach(b=>{
     b.setAttribute("aria-pressed", ON[b.dataset.sw] ? "true" : "false");
   });
   const chip = document.getElementById("design");
-  if(chip) chip.textContent = "оформление: " + DESIGN_RU[design];
+  if(chip) chip.textContent = "look: " + DESIGN_WORD[design];
   const q = new URLSearchParams(location.search);
   q.set("r", stateClasses());
   q.set("d", design);
@@ -765,17 +729,17 @@ function runCommand(raw){
   const head = parts[0], tail = parts.slice(1).join(" ");
   if(t === SECRET_WORD){
     design = (design === "secret") ? "day" : "secret";
-    cmdReply("Тихо. Это моё оформление, другим не говорю.", "ok");
+    cmdReply("Quiet. This look is mine, I do not tell the others.", "ok");
     return true;
   }
   // Слово собаке само по себе — не команда: подсказываем, как позвать.
   if(!tail && DOG_WORDS.indexOf(head) >= 0){
-    cmdReply("Это собаке. Позови её: dog " + head, "warn");
+    cmdReply("That one is for the dog. Call him: dog " + head, "warn");
     return false;
   }
   switch(head){
     case "help":
-      cmdReply("команды: " + COMMANDS.join(" · ") + ". у собаки свои слова: dog сидеть · dog голос · dog принеси · dog спать. и одно редкое слово, которого здесь нет.", "");
+      cmdReply("commands: " + COMMANDS.join(" · ") + ". the dog has his own words: dog sit · dog voice · dog fetch · dog sleep. and one rare word that is not written here.", "");
       return false;
     case "play":
       ON.music = 1; if(design === "day") design = "studio";
@@ -783,32 +747,32 @@ function runCommand(raw){
       cmdReply(SAY.music, "ok"); return true;
     case "stop":
       stopMusic(); ON.music = 0; if(design === "studio") design = "day";
-      cmdReply("Тишина. Вернула комнату как была.", ""); return true;
+      cmdReply("Silence. I put the room back as it was.", ""); return true;
     case "drums":
       ON.drums = ON.drums ? 0 : 1;
       if(ON.drums && musicOn) drumsScene();
-      cmdReply(ON.drums ? SAY.drums : "Барабаны смолкли. Моти вернулся.", ""); return true;
+      cmdReply(ON.drums ? SAY.drums : "The drums stopped. Mochi came back.", ""); return true;
     case "guitar":
       ON.guitar = ON.guitar ? 0 : 1;
-      cmdReply(ON.guitar ? "Гитара на стене. Трону струну — комната дрогнет."
-                         : "Отложила гитару.", ""); return true;
+      cmdReply(ON.guitar ? "The guitar is on the wall. One string and the room shivers."
+                         : "I put the guitar down.", ""); return true;
     case "dog":
       // Со словом — просьба собаке. Без слова — позвать Моти на игру, а вторым
       // разом отозвать: он сворачивается и спит.
       if(tail){
-        if(!dogWord(tail)) cmdReply("Моти такого не знает: сидеть · голос · принеси · спать.", "warn");
+        if(!dogWord(tail)) cmdReply("Mochi does not know that one: sit · voice · fetch · sleep.", "warn");
         return true;
       }
       if(!ON.dog){ ON.dog = 1; startGame(); }
-      else { ON.dog = 0; resetGame(); cmdReply("Моти свернулся и уснул.", ""); }
+      else { ON.dog = 0; resetGame(); cmdReply("Mochi curled up and fell asleep.", ""); }
       return true;
     case "night":
       design = (design === "night") ? "day" : "night";
-      cmdReply(design === "night" ? "Ночь. Говори тише, я почти сплю."
-                                  : "Утро вернулось. Лампа тёплая.", "ok");
+      cmdReply(design === "night" ? "Night. Keep it down, I am nearly asleep."
+                                  : "Morning came back. The lamp is warm.", "ok");
       return true;
     default:
-      cmdReply("неизвестная команда: " + t + " · набери help", "warn");
+      cmdReply("unknown command: " + t + " · type help", "warn");
       return false;
   }
 }
@@ -850,13 +814,13 @@ function publish(){
   try{
     fetch(REMOTE, {method:"POST", mode:"no-cors", body: stateClasses()});
     const chip = document.getElementById("copy");
-    chip.textContent = "нажатие ушло: окно в профиле подтянет его в течение часа";
+    chip.textContent = "sent: the window in the profile will catch up within the hour";
   }catch(e){}
 }
 
 document.getElementById("copy").addEventListener("click", async ()=>{
   try{ await navigator.clipboard.writeText(location.href);
-       document.getElementById("copy").textContent = "ссылка скопирована"; }
+       document.getElementById("copy").textContent = "link copied"; }
   catch{ location.hash = ""; }
 });
 
@@ -872,7 +836,7 @@ document.getElementById("askform").addEventListener("submit", e=>{
   ex.className = "ex";
   const me = document.createElement("div");
   me.className = "me";
-  me.textContent = "ты › " + q;
+  me.textContent = "you › " + q;
   ex.appendChild(me);
   ex.appendChild(sayNode(mizuAnswer(q, guestMoment())));
   talk.appendChild(ex);
@@ -919,17 +883,17 @@ async function boot(){
     noteVisit();
     readUrl();
     const who = (kept && !urlPinned)
-      ? "как ты оставил в прошлый раз"
-      : (latest.stateFrom === "guest" ? "как оставил последний гость" : "как я её оставил");
-    rest = "состояние: " + who + ":";
+      ? "as you left it last time"
+      : (latest.stateFrom === "guest" ? "as the last guest left it" : "as I left it");
+    rest = "state: " + who + ":";
     const clock = document.getElementById("clock");
     clock.textContent = (file === latest.name)
-      ? "время суток — по твоим часам: " + MOMENT_RU[mine]
-      : "время суток — по твоим часам: " + MOMENT_RU[mine] + " (профиль сейчас показывает другой вид)";
+      ? "time of day follows your clock: " + MOMENT_EN[mine]
+      : "time of day follows your clock: " + MOMENT_EN[mine] + " (the profile is showing another moment right now)";
     paint();
     applyQuiet(svg);
   }catch(err){
-    stage.innerHTML = '<div style="color:#ff3d9a;padding:24px 0">комната не приехала: ' +
+    stage.innerHTML = '<div style="color:#ff3d9a;padding:24px 0">the room did not load: ' +
       (err && err.message ? err.message : err) + "</div>";
   }
 }
